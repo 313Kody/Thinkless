@@ -1,0 +1,85 @@
+Projet : Thinkless – Plateforme sport & e-sport
+
+Objectif :
+Trouver des joueurs proches pour sports physiques ou e-sport
+Organiser des matchs et ligues
+Système de ranking individuel et moyen d’équipe pour matchs compétitifs
+Gestion d’équipes e-sport avec badges de jeux
+
+Utilisateurs:
+Création de compte : pseudo, email, mot de passe, localisation
+Choix des sports pratiqués et jeux e-sport
+
+Profil affiche : sports, jeux, ranking, badges
+
+Sports physiques :
+
+CRUD pour matchs : créer, rejoindre, voir matchs
+Possibilité de créer des ligues entre amis / collègues
+Classement par joueur et par ligue
+
+E-sport :
+Création et gestion d’équipes (1 équipe max par joueur)
+Chaque joueur renseigne les jeux qu’il joue
+Badges pour chaque jeu sur le profil
+
+Matchs e-sport : créer match, choisir jeu, enregistrer résultats
+
+Matchmaking compétitif : calcul du ranking moyen des joueurs d’une équipe pour un jeu → trouver adversaires du même niveau
+
+Ranking :
+
+Chaque joueur : rank par sport / jeu
+Ranking d’équipe pour un jeu = moyenne des ranks des joueurs jouant ce jeu
+Utilisé pour matchmaking compétitif
+
+Base de données (proposition 15 tables) :
+
+Utilisateur
+
+Sport
+
+UtilisateurSport
+
+JeuEsport
+
+UtilisateurJeu
+
+EquipeEsport
+
+EquipeMembre
+
+Match (sport physique)
+
+ParticipationMatch
+
+ResultatMatch
+
+Ligue
+
+LigueUtilisateur
+
+MatchEsport
+
+MatchEquipe
+
+ResultatMatchEsport
+
+Front-end :
+
+Tailwind recommandé pour responsive et composants réutilisables
+Cartes de match, badges, boutons
+Classes réutilisables → facile pour cas utilisateur E6
+
+Back-end :
+framework express
+PHP + MySQL
+CRUD complet pour utilisateurs, matchs, ligues, équipes, ranking
+
+Conseils pratiques :
+
+Développement principal : PC fixe + deux écrans
+
+GitHub pour versionning et démonstration
+Commits réguliers → montrer démarche professionnelle
+Tailwind pour responsive + design moderne → pas trop “framework” pour un BTS

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Matchs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 min-h-screen text-white">
+    <!-- Navbar -->
+    <nav
+      class="bg-gray-900 px-6 py-4 flex justify-between items-center border-b border-gray-800"
+    >
+      <h1 class="text-xl font-bold text-indigo-400">Thinkless</h1>
+      <div class="flex items-center gap-4">
+        <a
+          href="/profil.html"
+          class="text-gray-400 hover:text-white text-sm transition"
+          >Mon profil</a
+        >
+        <button
+          onclick="logout()"
+          class="text-sm text-red-400 hover:text-red-300 transition"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <!-- Contenu -->
+    <main class="max-w-4xl mx-auto px-4 py-8">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">Matchs disponibles</h2>
+        <a
+          href="/creer-match.html"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          + Créer un match
+        </a>
+      </div>
+
+      <!-- Liste des matchs -->
+      <div id="matchs-list" class="grid gap-4">
+        <p class="text-gray-500">Chargement...</p>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      async function loadMatchs() {
+        const res = await fetch("/api/matchs", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const matchs = await res.json();
+        const container = document.getElementById("matchs-list");
+
+        if (matchs.length === 0) {
+          container.innerHTML =
+            '<p class="text-gray-500">Aucun match disponible pour le moment.</p>';
+          return;
+        }
+
+        container.innerHTML = matchs
+          .map(
+            (m) => `
+        <div class="bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-indigo-500 transition">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-xs text-indigo-400 font-semibold uppercase">${m.sport}</span>
+              <h3 class="text-lg font-bold mt-1">${m.titre || "Match sans titre"}</h3>
+              <p class="text-gray-400 text-sm mt-1">📍 ${m.localisation || "Lieu non précisé"}</p>
+              <p class="text-gray-400 text-sm">📅 ${new Date(m.date_heure).toLocaleString("fr-FR")}</p>
+              <p class="text-gray-500 text-xs mt-2">Créé par <span class="text-white">${m.createur}</span></p>
+            </div>
+            <button onclick="rejoindre(${m.id})"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition">
+              Rejoindre
+            </button>
+          </div>
+        </div>
+      `,
+          )
+          .join("");
+      }
+
+      async function rejoindre(id) {
+        const res = await fetch(`/api/matchs/${id}/rejoindre`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        alert(data.message);
+        loadMatchs();
+      }
+
+      loadMatchs();
+    </script>
+  </body>
+</html>

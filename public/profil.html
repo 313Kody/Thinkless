@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Profil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 min-h-screen text-white">
+    <!-- Navbar -->
+    <nav
+      class="bg-gray-900 px-6 py-4 flex justify-between items-center border-b border-gray-800"
+    >
+      <a href="/index.html" class="text-xl font-bold text-indigo-400"
+        >Thinkless</a
+      >
+      <button
+        onclick="logout()"
+        class="text-sm text-red-400 hover:text-red-300 transition"
+      >
+        Déconnexion
+      </button>
+    </nav>
+
+    <main class="max-w-2xl mx-auto px-4 py-8">
+      <!-- Carte profil -->
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-6">
+        <div class="flex items-center gap-4 mb-4">
+          <div
+            class="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center text-2xl font-bold"
+            id="avatar"
+          >
+            ?
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold" id="pseudo">Chargement...</h2>
+            <p class="text-gray-400 text-sm" id="localisation"></p>
+            <p class="text-gray-500 text-xs" id="email"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sports -->
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-6">
+        <h3 class="text-lg font-bold mb-3">Sports pratiqués</h3>
+        <div id="sports" class="flex flex-wrap gap-2">
+          <p class="text-gray-500 text-sm">Aucun sport renseigné</p>
+        </div>
+      </div>
+
+      <!-- Jeux e-sport -->
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <h3 class="text-lg font-bold mb-3">Jeux e-sport</h3>
+        <div id="jeux" class="flex flex-wrap gap-2">
+          <p class="text-gray-500 text-sm">Aucun jeu renseigné</p>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!token) window.location.href = "/login.html";
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      async function loadProfil() {
+        const res = await fetch(`/api/users/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+
+        document.getElementById("pseudo").textContent = data.pseudo;
+        document.getElementById("avatar").textContent = data.pseudo
+          .charAt(0)
+          .toUpperCase();
+        document.getElementById("localisation").textContent =
+          data.localisation || "Localisation non renseignée";
+        document.getElementById("email").textContent = data.email || "";
+
+        if (data.sports) {
+          document.getElementById("sports").innerHTML = data.sports
+            .split(",")
+            .map(
+              (s) =>
+                `<span class="bg-indigo-900 text-indigo-300 text-xs font-semibold px-3 py-1 rounded-full">${s}</span>`,
+            )
+            .join("");
+        }
+
+        if (data.jeux) {
+          document.getElementById("jeux").innerHTML = data.jeux
+            .split(",")
+            .map(
+              (j) =>
+                `<span class="bg-purple-900 text-purple-300 text-xs font-semibold px-3 py-1 rounded-full">${j}</span>`,
+            )
+            .join("");
+        }
+      }
+
+      loadProfil();
+    </script>
+  </body>
+</html>
