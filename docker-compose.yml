@@ -1,0 +1,26 @@
+services:
+  web-thinkless:
+    image: node:20 # On utilise Node au lieu de PHP
+    container_name: thinkless-web
+    working_dir: /app
+    ports:
+      - "81:3000" # On mappe le port 81 (Windows) sur le 3000 (Express)
+    volumes:
+      - .:/app
+    networks:
+      - f1_network
+    # On installe les dépendances et on lance le serveur
+    command: sh -c "npm install && node server.js"
+
+  db-thinkless:
+    image: mysql:8.0
+    container_name: thinkless-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: thinkless_db
+    networks:
+      - f1_network
+
+networks:
+  f1_network:
+    external: true

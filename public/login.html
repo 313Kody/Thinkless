@@ -131,20 +131,27 @@
         const mot_de_passe = document.getElementById("login-password").value;
         const err = document.getElementById("login-error");
 
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, mot_de_passe }),
-        });
-        const data = await res.json();
+        try {
+          const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, mot_de_passe }),
+          });
+          const data = await res.json();
 
-        if (res.ok) {
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("user", JSON.stringify(data.user));
-          window.location.href = "/index.html";
-        } else {
-          err.textContent = data.message;
+          if (res.ok) {
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("user", JSON.stringify(data.user));
+            window.location.href = "/index.html";
+          } else {
+            err.textContent = data.message || "Erreur serveur";
+            err.classList.remove("hidden");
+          }
+        } catch (error) {
+          err.textContent =
+            "Erreur réseau : impossible de contacter le serveur.";
           err.classList.remove("hidden");
+          console.error("Login fetch error:", error);
         }
       }
 
@@ -155,18 +162,40 @@
         const localisation = document.getElementById("reg-localisation").value;
         const err = document.getElementById("reg-error");
 
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pseudo, email, mot_de_passe, localisation }),
-        });
-        const data = await res.json();
+        try {
+          const res = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pseudo, email, mot_de_passe, localisation }),
+          });
+          const data = await res.json();
 
-        if (res.ok) {
-          showTab("login");
-        } else {
-          err.textContent = data.message;
+          if (res.ok) {
+            // Connexion automatique après inscription réussie
+            const loginRes = await fetch("/api/auth/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, mot_de_passe }),
+            });
+            const loginData = await loginRes.json();
+
+            if (loginRes.ok) {
+              localStorage.setItem("token", loginData.token);
+              localStorage.setItem("user", JSON.stringify(loginData.user));
+              window.location.href = "/index.html";
+            } else {
+              // En cas d'erreur de connexion auto, afficher l'onglet login
+              showTab("login");
+            }
+          } else {
+            err.textContent = data.message || "Erreur serveur";
+            err.classList.remove("hidden");
+          }
+        } catch (error) {
+          err.textContent =
+            "Erreur réseau : impossible de contacter le serveur.";
           err.classList.remove("hidden");
+          console.error("Register fetch error:", error);
         }
       }
     </script>

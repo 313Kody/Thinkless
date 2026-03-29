@@ -1,5 +1,5 @@
-const db = require("../config/db");
-const bcrypt = require("bcrypt");
+const { getPool } = require("../config/db");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 exports.register = async (req, res) => {
@@ -12,6 +12,7 @@ exports.register = async (req, res) => {
 
     const hash = await bcrypt.hash(mot_de_passe, 10);
 
+    const db = getPool();
     const [result] = await db.execute(
       "INSERT INTO Utilisateur (pseudo, email, mot_de_passe, localisation) VALUES (?, ?, ?, ?)",
       [pseudo, email, hash, localisation || null],
@@ -34,6 +35,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Email et mot de passe requis" });
     }
 
+    const db = getPool();
     const [rows] = await db.execute(
       "SELECT * FROM Utilisateur WHERE email = ?",
       [email],
