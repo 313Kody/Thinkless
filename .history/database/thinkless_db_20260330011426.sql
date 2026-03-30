@@ -25,7 +25,7 @@ CREATE TABLE Utilisateur (
   created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
                                 ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 2. Sport physique
@@ -33,7 +33,7 @@ CREATE TABLE Utilisateur (
 CREATE TABLE Sport (
   id    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nom   VARCHAR(100) NOT NULL UNIQUE
-) ENGINE=InnoDB;
+);
 
 -- Données de base
 INSERT INTO Sport (nom) VALUES
@@ -54,7 +54,7 @@ CREATE TABLE UtilisateurSport (
     REFERENCES Utilisateur(id) ON DELETE CASCADE,
   CONSTRAINT fk_us_sport       FOREIGN KEY (sport_id)
     REFERENCES Sport(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 4. Jeu e-sport
@@ -63,7 +63,7 @@ CREATE TABLE JeuEsport (
   id          INT UNSIGNED  AUTO_INCREMENT PRIMARY KEY,
   nom         VARCHAR(100)  NOT NULL UNIQUE,
   badge_url   VARCHAR(255)  DEFAULT NULL    -- image du badge affiché sur le profil
-) ENGINE=InnoDB;
+);
 
 INSERT INTO JeuEsport (nom) VALUES
   ('League of Legends'), ('Valorant'), ('CS2'),
@@ -83,7 +83,7 @@ CREATE TABLE UtilisateurJeu (
     REFERENCES Utilisateur(id) ON DELETE CASCADE,
   CONSTRAINT fk_uj_jeu         FOREIGN KEY (jeu_id)
     REFERENCES JeuEsport(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 6. Équipe e-sport
@@ -96,7 +96,7 @@ CREATE TABLE EquipeEsport (
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_equipe_capitaine FOREIGN KEY (capitaine_id)
     REFERENCES Utilisateur(id) ON DELETE RESTRICT
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 7. Membres d'une équipe
@@ -112,7 +112,7 @@ CREATE TABLE EquipeMembre (
     REFERENCES EquipeEsport(id) ON DELETE CASCADE,
   CONSTRAINT fk_em_utilisateur FOREIGN KEY (utilisateur_id)
     REFERENCES Utilisateur(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
 
 CREATE TABLE Ligue (
   id            INT UNSIGNED  AUTO_INCREMENT PRIMARY KEY,
@@ -126,7 +126,7 @@ CREATE TABLE Ligue (
     REFERENCES Sport(id),
   CONSTRAINT fk_ligue_createur FOREIGN KEY (createur_id)
     REFERENCES Utilisateur(id)
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 12. Membres d'une ligue + classement
@@ -143,7 +143,7 @@ CREATE TABLE LigueUtilisateur (
     REFERENCES Ligue(id) ON DELETE CASCADE,
   CONSTRAINT fk_lu_utilisateur FOREIGN KEY (utilisateur_id)
     REFERENCES Utilisateur(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 8. Match sport physique
@@ -157,11 +157,6 @@ CREATE TABLE MatchSport (
   date_heure      DATETIME      NOT NULL,
   localisation    VARCHAR(200)  DEFAULT NULL,
   nb_joueurs_max  TINYINT UNSIGNED NOT NULL DEFAULT 2,
-  nb_equipe_a     TINYINT UNSIGNED DEFAULT 1,
-  nb_equipe_b     TINYINT UNSIGNED DEFAULT 1,
-  nb_remplacants  TINYINT UNSIGNED DEFAULT 0,
-  nom_equipe_a    VARCHAR(100) DEFAULT 'Équipe A',
-  nom_equipe_b    VARCHAR(100) DEFAULT 'Équipe B',
   statut          ENUM('ouvert','complet','termine','annule')
                   NOT NULL DEFAULT 'ouvert',
   created_at      DATETIME  NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -171,7 +166,7 @@ CREATE TABLE MatchSport (
     REFERENCES Sport(id),
   CONSTRAINT fk_match_createur FOREIGN KEY (createur_id)
     REFERENCES Utilisateur(id)
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 9. Participation à un match physique
@@ -185,7 +180,8 @@ CREATE TABLE ParticipationMatch (
     REFERENCES MatchSport(id) ON DELETE CASCADE,
   CONSTRAINT fk_pm_utilisateur FOREIGN KEY (utilisateur_id)
     REFERENCES Utilisateur(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
+
 -- ------------------------------------------------------------
 -- 10. Résultat d'un match physique
 --     ELO delta stocké pour l'historique
@@ -205,7 +201,7 @@ CREATE TABLE ResultatMatch (
     REFERENCES Utilisateur(id),
   CONSTRAINT fk_rm_perdant FOREIGN KEY (perdant_id)
     REFERENCES Utilisateur(id)
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 11. Ligue (entre amis / collègues)
@@ -227,7 +223,7 @@ CREATE TABLE MatchEsport (
     REFERENCES JeuEsport(id),
   CONSTRAINT fk_me_createur FOREIGN KEY (createur_id)
     REFERENCES Utilisateur(id)
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 14. Équipes participant à un match e-sport
@@ -241,7 +237,7 @@ CREATE TABLE MatchEquipe (
     REFERENCES MatchEsport(id) ON DELETE CASCADE,
   CONSTRAINT fk_meq_equipe FOREIGN KEY (equipe_id)
     REFERENCES EquipeEsport(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
 
 -- ------------------------------------------------------------
 -- 15. Résultat d'un match e-sport
@@ -261,7 +257,7 @@ CREATE TABLE ResultatMatchEsport (
     REFERENCES EquipeEsport(id),
   CONSTRAINT fk_rme_perdant  FOREIGN KEY (equipe_perdante_id)
     REFERENCES EquipeEsport(id)
-) ENGINE=InnoDB;
+);
 
 -- ============================================================
 --  VUES UTILES

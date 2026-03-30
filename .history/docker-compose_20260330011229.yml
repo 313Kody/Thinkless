@@ -22,8 +22,6 @@ services:
     volumes:
       - thinkless_db_data:/var/lib/mysql # ← persistance
       - ./database/thinkless_db.sql:/docker-entrypoint-initdb.d/init.sql # ← auto-import
-    ports:
-      - "3307:3306" # ← 3307 car 3306 est déjà pris par ton projet F1
     networks:
       - f1_network
 

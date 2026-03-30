@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Créer une ligue</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 min-h-screen text-white">
+    <nav
+      class="bg-gray-900 px-6 py-4 flex justify-between items-center border-b border-gray-800"
+    >
+      <a href="/index.html" class="text-xl font-bold text-indigo-400"
+        >Thinkless</a
+      >
+      <button
+        onclick="logout()"
+        class="text-sm text-red-400 hover:text-red-300 transition"
+      >
+        Déconnexion
+      </button>
+    </nav>
+
+    <main class="max-w-lg mx-auto px-4 py-10">
+      <h2 class="text-2xl font-bold mb-6">Créer une ligue</h2>
+
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1">Sport</label>
+          <select
+            id="sport_id"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Chargement...</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1"
+            >Nom de la ligue</label
+          >
+          <input
+            id="nom"
+            type="text"
+            placeholder="Ex: Ligue des collègues"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1">Description</label>
+          <textarea
+            id="description"
+            placeholder="Décris ta ligue..."
+            rows="3"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          ></textarea>
+        </div>
+
+        <div class="mb-6 flex items-center gap-3">
+          <input
+            id="publique"
+            type="checkbox"
+            class="w-4 h-4 accent-indigo-500"
+          />
+          <label class="text-gray-400 text-sm"
+            >Ligue publique (visible par tous)</label
+          >
+        </div>
+
+        <button
+          onclick="creerLigue()"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
+        >
+          Créer la ligue
+        </button>
+
+        <p id="error" class="text-red-400 text-sm mt-3 text-center hidden"></p>
+        <p
+          id="success"
+          class="text-green-400 text-sm mt-3 text-center hidden"
+        ></p>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      async function loadSports() {
+        const res = await fetch("/api/sports", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const sports = await res.json();
+        document.getElementById("sport_id").innerHTML = sports
+          .map((s) => `<option value="${s.id}">${s.nom}</option>`)
+          .join("");
+      }
+
+      async function creerLigue() {
+        const error = document.getElementById("error");
+        const success = document.getElementById("success");
+        error.classList.add("hidden");
+        success.classList.add("hidden");
+
+        const body = {
+          sport_id: parseInt(document.getElementById("sport_id").value),
+          nom: document.getElementById("nom").value,
+          description: document.getElementById("description").value,
+          publique: document.getElementById("publique").checked,
+        };
+
+        const res = await fetch("/api/ligues", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          success.textContent = "Ligue créée ! Redirection...";
+          success.classList.remove("hidden");
+          setTimeout(() => (window.location.href = "/ligues.html"), 1500);
+        } else {
+          error.textContent = data.message;
+          error.classList.remove("hidden");
+        }
+      }
+
+      loadSports();
+    </script>
+  </body>
+</html>

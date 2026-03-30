@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Sport & E-sport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 min-h-screen text-white">
+    <!-- Navbar -->
+    <nav
+      class="bg-gray-900 px-8 py-4 flex justify-between items-center border-b border-gray-800"
+    >
+      <h1 class="text-2xl font-bold text-indigo-400">Thinkless</h1>
+      <div class="flex gap-3">
+        <a
+          href="/login.html"
+          class="text-gray-400 hover:text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+        >
+          Connexion
+        </a>
+        <a
+          href="/login.html#register"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          S'inscrire
+        </a>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="max-w-4xl mx-auto px-6 py-24 text-center">
+      <span
+        class="bg-indigo-900 text-indigo-300 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider"
+      >
+        Sport & E-sport
+      </span>
+      <h2 class="text-5xl font-bold mt-6 mb-4 leading-tight">
+        Trouve des joueurs.<br />
+        <span class="text-indigo-400">Organise des matchs.</span>
+      </h2>
+      <p class="text-gray-400 text-lg mb-10 max-w-xl mx-auto">
+        Thinkless connecte les joueurs de sport physique et e-sport pour
+        organiser des matchs, créer des ligues et suivre ton ranking.
+      </p>
+      <div class="flex gap-4 justify-center">
+        <a
+          href="/register.html"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-3 rounded-xl transition text-lg"
+        >
+          Commencer
+        </a>
+        <a
+          href="#features"
+          class="bg-gray-800 hover:bg-gray-700 text-white font-semibold px-8 py-3 rounded-xl transition text-lg"
+        >
+          En savoir plus
+        </a>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="max-w-5xl mx-auto px-6 pb-24">
+      <h3 class="text-2xl font-bold text-center mb-12">
+        Tout ce dont tu as besoin
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+          <div class="text-3xl mb-4">⚽</div>
+          <h4 class="text-lg font-bold mb-2">Sports physiques</h4>
+          <p class="text-gray-400 text-sm">
+            Crée ou rejoins des matchs près de chez toi. Football, basket,
+            tennis et plus encore.
+          </p>
+        </div>
+
+        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+          <div class="text-3xl mb-4">🎮</div>
+          <h4 class="text-lg font-bold mb-2">E-sport</h4>
+          <p class="text-gray-400 text-sm">
+            Crée ton équipe, affronte d'autres équipes du même niveau grâce au
+            matchmaking ELO.
+          </p>
+        </div>
+
+        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+          <div class="text-3xl mb-4">🏆</div>
+          <h4 class="text-lg font-bold mb-2">Ranking & Ligues</h4>
+          <p class="text-gray-400 text-sm">
+            Suis ta progression avec le système ELO. Crée des ligues privées
+            entre amis.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer
+      class="border-t border-gray-800 py-6 text-center text-gray-600 text-sm"
+    >
+      Thinkless © 2026 – Projet E6 BTS SIO
+    </footer>
+
+    <script>
+      // Redirige vers index si déjà connecté
+      if (localStorage.getItem("token")) {
+        window.location.href = "/index.html";
+      }
+    </script>
+  </body>
+</html>

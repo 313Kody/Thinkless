@@ -157,11 +157,6 @@ CREATE TABLE MatchSport (
   date_heure      DATETIME      NOT NULL,
   localisation    VARCHAR(200)  DEFAULT NULL,
   nb_joueurs_max  TINYINT UNSIGNED NOT NULL DEFAULT 2,
-  nb_equipe_a     TINYINT UNSIGNED DEFAULT 1,
-  nb_equipe_b     TINYINT UNSIGNED DEFAULT 1,
-  nb_remplacants  TINYINT UNSIGNED DEFAULT 0,
-  nom_equipe_a    VARCHAR(100) DEFAULT 'Équipe A',
-  nom_equipe_b    VARCHAR(100) DEFAULT 'Équipe B',
   statut          ENUM('ouvert','complet','termine','annule')
                   NOT NULL DEFAULT 'ouvert',
   created_at      DATETIME  NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Créer un match</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 min-h-screen text-white">
+    <nav
+      class="bg-gray-900 px-6 py-4 flex justify-between items-center border-b border-gray-800"
+    >
+      <a href="/index.html" class="text-xl font-bold text-indigo-400"
+        >Thinkless</a
+      >
+      <button
+        onclick="logout()"
+        class="text-sm text-red-400 hover:text-red-300 transition"
+      >
+        Déconnexion
+      </button>
+    </nav>
+
+    <main class="max-w-lg mx-auto px-4 py-10">
+      <h2 class="text-2xl font-bold mb-6">Créer un match</h2>
+
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1">Sport</label>
+          <select
+            id="sport_id"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Chargement...</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1">Titre</label>
+          <input
+            id="titre"
+            type="text"
+            placeholder="Ex: Match foot du dimanche"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1">Date et heure</label>
+          <input
+            id="date_heure"
+            type="datetime-local"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1">Localisation</label>
+          <input
+            id="localisation"
+            type="text"
+            placeholder="Ex: Paris 15e"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <!-- Équipes -->
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-3">Équipes</label>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-gray-500 text-xs mb-1"
+                >Nom équipe A</label
+              >
+              <input
+                id="nom_equipe_a"
+                type="text"
+                placeholder="Équipe A"
+                value="Équipe A"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="block text-gray-500 text-xs mb-1"
+                >Nom équipe B</label
+              >
+              <input
+                id="nom_equipe_b"
+                type="text"
+                placeholder="Équipe B"
+                value="Équipe B"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-gray-500 text-xs mb-1">Joueurs A</label>
+              <input
+                id="nb_equipe_a"
+                type="number"
+                min="1"
+                max="15"
+                value="5"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="block text-gray-500 text-xs mb-1">Joueurs B</label>
+              <input
+                id="nb_equipe_b"
+                type="number"
+                min="1"
+                max="15"
+                value="5"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="block text-gray-500 text-xs mb-1"
+                >Remplaçants</label
+              >
+              <input
+                id="nb_remplacants"
+                type="number"
+                min="0"
+                max="6"
+                value="0"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mb-6 bg-gray-800 rounded-lg px-4 py-3 text-sm text-gray-400"
+        >
+          Total :
+          <span id="total-joueurs" class="text-white font-semibold">10</span>
+          joueurs
+        </div>
+
+        <button
+          onclick="creerMatch()"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
+        >
+          Créer le match
+        </button>
+
+        <p id="error" class="text-red-400 text-sm mt-3 text-center hidden"></p>
+        <p
+          id="success"
+          class="text-green-400 text-sm mt-3 text-center hidden"
+        ></p>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      // Calcul dynamique du total
+      ["nb_equipe_a", "nb_equipe_b", "nb_remplacants"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", () => {
+          const a = parseInt(document.getElementById("nb_equipe_a").value) || 0;
+          const b = parseInt(document.getElementById("nb_equipe_b").value) || 0;
+          const rem =
+            parseInt(document.getElementById("nb_remplacants").value) || 0;
+          document.getElementById("total-joueurs").textContent = a + b + rem;
+        });
+      });
+
+      async function loadSports() {
+        const res = await fetch("/api/sports", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const sports = await res.json();
+        document.getElementById("sport_id").innerHTML = sports
+          .map((s) => `<option value="${s.id}">${s.nom}</option>`)
+          .join("");
+      }
+
+      async function creerMatch() {
+        const error = document.getElementById("error");
+        const success = document.getElementById("success");
+        error.classList.add("hidden");
+        success.classList.add("hidden");
+
+        const nb_equipe_a = parseInt(
+          document.getElementById("nb_equipe_a").value,
+        );
+        const nb_equipe_b = parseInt(
+          document.getElementById("nb_equipe_b").value,
+        );
+        const nb_remplacants = parseInt(
+          document.getElementById("nb_remplacants").value,
+        );
+
+        const body = {
+          sport_id: parseInt(document.getElementById("sport_id").value),
+          titre: document.getElementById("titre").value,
+          date_heure: document.getElementById("date_heure").value,
+          localisation: document.getElementById("localisation").value,
+          nom_equipe_a:
+            document.getElementById("nom_equipe_a").value || "Équipe A",
+          nom_equipe_b:
+            document.getElementById("nom_equipe_b").value || "Équipe B",
+          nb_equipe_a,
+          nb_equipe_b,
+          nb_remplacants,
+          nb_joueurs_max: nb_equipe_a + nb_equipe_b + nb_remplacants,
+        };
+
+        const res = await fetch("/api/matchs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          success.textContent = "Match créé ! Redirection...";
+          success.classList.remove("hidden");
+          setTimeout(() => (window.location.href = "/index.html"), 1500);
+        } else {
+          error.textContent = data.message;
+          error.classList.remove("hidden");
+        }
+      }
+
+      loadSports();
+    </script>
+  </body>
+</html>

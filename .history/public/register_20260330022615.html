@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Inscription</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 min-h-screen flex items-center justify-center py-10">
+    <div class="bg-gray-900 p-8 rounded-2xl shadow-lg w-full max-w-lg">
+      <h1 class="text-3xl font-bold text-white mb-1 text-center">Thinkless</h1>
+      <p class="text-gray-400 text-center mb-6">Crée ton compte</p>
+
+      <!-- Progress bar -->
+      <div class="flex gap-2 mb-8">
+        <div
+          id="step-bar-1"
+          class="flex-1 h-1 rounded-full bg-indigo-500"
+        ></div>
+        <div id="step-bar-2" class="flex-1 h-1 rounded-full bg-gray-700"></div>
+        <div id="step-bar-3" class="flex-1 h-1 rounded-full bg-gray-700"></div>
+        <div id="step-bar-4" class="flex-1 h-1 rounded-full bg-gray-700"></div>
+      </div>
+
+      <!-- Étape 1 : Infos de base -->
+      <div id="step-1">
+        <p class="text-gray-400 text-sm mb-4">
+          Étape 1 / 4 — Informations de base
+        </p>
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1">Pseudo</label>
+          <input
+            id="pseudo"
+            type="text"
+            placeholder="TonPseudo"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1">Email</label>
+          <input
+            id="email"
+            type="email"
+            placeholder="ton@email.com"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-400 text-sm mb-1">Mot de passe</label>
+          <input
+            id="mot_de_passe"
+            type="password"
+            placeholder="12 car. min, majuscule, chiffre, spécial"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <div class="mb-6">
+          <label class="block text-gray-400 text-sm mb-1">Ville</label>
+          <input
+            id="localisation"
+            type="text"
+            placeholder="Paris"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <p id="error-1" class="text-red-400 text-sm mb-3 hidden"></p>
+        <button
+          onclick="goStep(2)"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
+        >
+          Suivant →
+        </button>
+      </div>
+
+      <!-- Étape 2 : Sports -->
+      <div id="step-2" class="hidden">
+        <p class="text-gray-400 text-sm mb-4">Étape 2 / 4 — Tes sports</p>
+        <p class="text-gray-300 text-sm mb-4">
+          Sélectionne les sports que tu pratiques et ton niveau :
+        </p>
+        <div id="sports-list" class="space-y-3 mb-6">
+          <p class="text-gray-500">Chargement...</p>
+        </div>
+        <div class="flex gap-3">
+          <button
+            onclick="goStep(1)"
+            class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
+          >
+            ← Retour
+          </button>
+          <button
+            onclick="goStep(3)"
+            class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Suivant →
+          </button>
+        </div>
+      </div>
+
+      <!-- Étape 3 : E-sport -->
+      <div id="step-3" class="hidden">
+        <p class="text-gray-400 text-sm mb-4">Étape 3 / 4 — E-sport</p>
+        <div class="mb-4 flex items-center gap-3">
+          <input
+            id="is-gamer"
+            type="checkbox"
+            class="w-4 h-4 accent-indigo-500"
+            onchange="toggleGamer()"
+          />
+          <label class="text-gray-300 text-sm font-medium"
+            >Je suis gamer 🎮</label
+          >
+        </div>
+        <div id="jeux-container" class="hidden">
+          <p class="text-gray-300 text-sm mb-4">
+            Sélectionne tes jeux et ton rank :
+          </p>
+          <div id="jeux-list" class="space-y-3 mb-4">
+            <p class="text-gray-500">Chargement...</p>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-4">
+          <button
+            onclick="goStep(2)"
+            class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
+          >
+            ← Retour
+          </button>
+          <button
+            onclick="goStep(4)"
+            class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Suivant →
+          </button>
+        </div>
+      </div>
+
+      <!-- Étape 4 : Confirmation -->
+      <div id="step-4" class="hidden">
+        <p class="text-gray-400 text-sm mb-6">Étape 4 / 4 — Confirmation</p>
+        <div class="bg-gray-800 rounded-xl p-4 mb-6 space-y-2">
+          <p class="text-white">
+            <span class="text-gray-400">Pseudo :</span>
+            <span id="recap-pseudo"></span>
+          </p>
+          <p class="text-white">
+            <span class="text-gray-400">Email :</span>
+            <span id="recap-email"></span>
+          </p>
+          <p class="text-white">
+            <span class="text-gray-400">Ville :</span>
+            <span id="recap-ville"></span>
+          </p>
+          <p class="text-white">
+            <span class="text-gray-400">Sports :</span>
+            <span id="recap-sports"></span>
+          </p>
+          <p class="text-white">
+            <span class="text-gray-400">Jeux :</span>
+            <span id="recap-jeux"></span>
+          </p>
+        </div>
+        <p id="error-4" class="text-red-400 text-sm mb-3 hidden"></p>
+        <div class="flex gap-3">
+          <button
+            onclick="goStep(3)"
+            class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
+          >
+            ← Retour
+          </button>
+          <button
+            onclick="register()"
+            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Créer mon compte ✓
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (token) window.location.href = "/index.html";
+
+      const sportsNiveaux = [
+        "Bronze",
+        "Silver",
+        "Gold",
+        "Platinum",
+        "Diamond",
+        "Master",
+      ];
+      const jeuxNiveaux = [
+        "Iron",
+        "Bronze",
+        "Silver",
+        "Gold",
+        "Platinum",
+        "Diamond",
+        "Master",
+        "Grandmaster",
+        "Challenger",
+      ];
+
+      let sportsData = [];
+      let jeuxData = [];
+      let sportsSelectionnes = {};
+      let jeuxSelectionnes = {};
+
+      async function loadSports() {
+        const res = await fetch("/api/sports");
+        sportsData = await res.json();
+        document.getElementById("sports-list").innerHTML = sportsData
+          .map(
+            (s) => `
+        <div class="flex items-center justify-between bg-gray-800 rounded-lg px-4 py-3">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" value="${s.id}" onchange="toggleSport(${s.id}, this.checked)"
+              class="w-4 h-4 accent-indigo-500">
+            <span class="text-white text-sm font-medium">${s.nom}</span>
+          </label>
+          <select id="niveau-sport-${s.id}" disabled onchange="sportsSelectionnes[${s.id}] = this.value"
+            class="bg-gray-700 text-gray-400 text-sm rounded-lg px-2 py-1 outline-none disabled:opacity-40">
+            ${sportsNiveaux.map((n) => `<option value="${n}">${n}</option>`).join("")}
+          </select>
+        </div>
+      `,
+          )
+          .join("");
+      }
+
+      async function loadJeux() {
+        const res = await fetch("/api/jeux");
+        jeuxData = await res.json();
+        document.getElementById("jeux-list").innerHTML = jeuxData
+          .map(
+            (j) => `
+        <div class="flex items-center justify-between bg-gray-800 rounded-lg px-4 py-3">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" value="${j.id}" onchange="toggleJeu(${j.id}, this.checked)"
+              class="w-4 h-4 accent-indigo-500">
+            <span class="text-white text-sm font-medium">${j.nom}</span>
+          </label>
+          <select id="niveau-jeu-${j.id}" disabled onchange="jeuxSelectionnes[${j.id}] = this.value"
+            class="bg-gray-700 text-gray-400 text-sm rounded-lg px-2 py-1 outline-none disabled:opacity-40">
+            ${jeuxNiveaux.map((n) => `<option value="${n}">${n}</option>`).join("")}
+          </select>
+        </div>
+      `,
+          )
+          .join("");
+      }
+
+      function toggleSport(id, checked) {
+        const select = document.getElementById(`niveau-sport-${id}`);
+        select.disabled = !checked;
+        select.classList.toggle("text-white", checked);
+        select.classList.toggle("text-gray-400", !checked);
+        if (checked) {
+          sportsSelectionnes[id] = select.value;
+        } else {
+          delete sportsSelectionnes[id];
+        }
+      }
+
+      function toggleJeu(id, checked) {
+        const select = document.getElementById(`niveau-jeu-${id}`);
+        select.disabled = !checked;
+        select.classList.toggle("text-white", checked);
+        select.classList.toggle("text-gray-400", !checked);
+        if (checked) {
+          jeuxSelectionnes[id] = select.value;
+        } else {
+          delete jeuxSelectionnes[id];
+        }
+      }
+
+      function toggleGamer() {
+        const checked = document.getElementById("is-gamer").checked;
+        document
+          .getElementById("jeux-container")
+          .classList.toggle("hidden", !checked);
+      }
+
+      function goStep(step) {
+        // Validation étape 1
+        if (step === 2) {
+          const pseudo = document.getElementById("pseudo").value;
+          const email = document.getElementById("email").value;
+          const mdp = document.getElementById("mot_de_passe").value;
+          const ville = document.getElementById("localisation").value;
+          const err = document.getElementById("error-1");
+          const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{12,}$/;
+
+          if (!pseudo || !email || !mdp || !ville) {
+            err.textContent = "Tous les champs sont obligatoires";
+            err.classList.remove("hidden");
+            return;
+          }
+          if (!regex.test(mdp)) {
+            err.textContent =
+              "Mot de passe trop faible (12 car. min, majuscule, chiffre, caractère spécial)";
+            err.classList.remove("hidden");
+            return;
+          }
+          err.classList.add("hidden");
+        }
+
+        // Recap étape 4
+        if (step === 4) {
+          document.getElementById("recap-pseudo").textContent =
+            document.getElementById("pseudo").value;
+          document.getElementById("recap-email").textContent =
+            document.getElementById("email").value;
+          document.getElementById("recap-ville").textContent =
+            document.getElementById("localisation").value;
+
+          const sportsNoms = Object.keys(sportsSelectionnes).map((id) => {
+            const sport = sportsData.find((s) => s.id == id);
+            return `${sport.nom} (${sportsSelectionnes[id]})`;
+          });
+          document.getElementById("recap-sports").textContent =
+            sportsNoms.length ? sportsNoms.join(", ") : "Aucun";
+
+          const jeuxNoms = Object.keys(jeuxSelectionnes).map((id) => {
+            const jeu = jeuxData.find((j) => j.id == id);
+            return `${jeu.nom} (${jeuxSelectionnes[id]})`;
+          });
+          document.getElementById("recap-jeux").textContent = jeuxNoms.length
+            ? jeuxNoms.join(", ")
+            : "Aucun";
+        }
+
+        // Changer d'étape
+        for (let i = 1; i <= 4; i++) {
+          document
+            .getElementById(`step-${i}`)
+            .classList.toggle("hidden", i !== step);
+          document.getElementById(`step-bar-${i}`).className =
+            `flex-1 h-1 rounded-full ${i <= step ? "bg-indigo-500" : "bg-gray-700"}`;
+        }
+      }
+
+      async function register() {
+        const err = document.getElementById("error-4");
+        err.classList.add("hidden");
+
+        const body = {
+          pseudo: document.getElementById("pseudo").value,
+          email: document.getElementById("email").value,
+          mot_de_passe: document.getElementById("mot_de_passe").value,
+          localisation: document.getElementById("localisation").value,
+          sports: Object.entries(sportsSelectionnes).map(([id, niveau]) => ({
+            sport_id: parseInt(id),
+            niveau,
+          })),
+          jeux: Object.entries(jeuxSelectionnes).map(([id, niveau]) => ({
+            jeu_id: parseInt(id),
+            niveau,
+          })),
+        };
+
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          // Connexion automatique
+          const loginRes = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: body.email,
+              mot_de_passe: body.mot_de_passe,
+            }),
+          });
+          const loginData = await loginRes.json();
+          localStorage.setItem("token", loginData.token);
+          localStorage.setItem("user", JSON.stringify(loginData.user));
+          window.location.href = "/index.html";
+        } else {
+          err.textContent = data.message;
+          err.classList.remove("hidden");
+        }
+      }
+
+      loadSports();
+      loadJeux();
+    </script>
+  </body>
+</html>

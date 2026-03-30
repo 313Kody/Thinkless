@@ -32,15 +32,6 @@ app.get("/ping", async (req, res) => {
   }
 });
 
-app.get("/api/jeux", async (req, res) => {
-  try {
-    const db = getPool();
-    const [rows] = await db.execute("SELECT * FROM JeuEsport ORDER BY nom");
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ message: "Erreur serveur", error: err.message });
-  }
-});
 // Route sports (simple, pas besoin de controller séparé)
 app.get("/api/sports", async (req, res) => {
   try {

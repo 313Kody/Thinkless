@@ -14,11 +14,6 @@
       <h1 class="text-xl font-bold text-indigo-400">Thinkless</h1>
       <div class="flex items-center gap-4">
         <a
-          href="/ligues.html"
-          class="text-gray-400 hover:text-white text-sm transition"
-          >Ligues</a
-        >
-        <a
           href="/profil.html"
           class="text-gray-400 hover:text-white text-sm transition"
           >Mon profil</a
@@ -36,20 +31,12 @@
     <main class="max-w-4xl mx-auto px-4 py-8">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold">Matchs disponibles</h2>
-        <div class="flex gap-3">
-          <a
-            href="/creer-ligue.html"
-            class="bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-          >
-            + Créer une ligue
-          </a>
-          <a
-            href="/creer-match.html"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-          >
-            + Créer un match
-          </a>
-        </div>
+        <a
+          href="/creer-match.html"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          + Créer un match
+        </a>
       </div>
 
       <div class="flex gap-3 mb-6">
@@ -88,7 +75,7 @@
 
       function logout() {
         localStorage.clear();
-        window.location.href = "/acceuil.html";
+        window.location.href = "/login.html";
       }
 
       async function loadMatchs() {

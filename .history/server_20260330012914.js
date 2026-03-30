@@ -15,13 +15,6 @@ app.use("/api/matchs", matchRoutes);
 const userRoutes = require("./routes/users");
 app.use("/api/users", userRoutes);
 
-const ligueRoutes = require("./routes/ligues");
-app.use("/api/ligues", ligueRoutes);
-
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/public/accueil.html");
-});
-
 app.get("/ping", async (req, res) => {
   try {
     const db = getPool();
@@ -29,26 +22,6 @@ app.get("/ping", async (req, res) => {
     res.json({ message: "Serveur OK + MariaDB connecté ✅" });
   } catch (err) {
     res.status(500).json({ message: "Erreur DB ❌", error: err.message });
-  }
-});
-
-app.get("/api/jeux", async (req, res) => {
-  try {
-    const db = getPool();
-    const [rows] = await db.execute("SELECT * FROM JeuEsport ORDER BY nom");
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ message: "Erreur serveur", error: err.message });
-  }
-});
-// Route sports (simple, pas besoin de controller séparé)
-app.get("/api/sports", async (req, res) => {
-  try {
-    const db = getPool();
-    const [rows] = await db.execute("SELECT * FROM Sport ORDER BY nom");
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
 });
 
