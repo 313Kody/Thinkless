@@ -36,8 +36,8 @@ exports.register = async (req, res) => {
     if (sports && sports.length > 0) {
       for (const s of sports) {
         await db.execute(
-          "INSERT INTO UtilisateurSport (utilisateur_id, sport_id, niveau) VALUES (?, ?, ?)",
-          [userId, s.sport_id, s.niveau],
+          "INSERT INTO UtilisateurSport (utilisateur_id, sport_id) VALUES (?, ?)",
+          [userId, s.sport_id],
         );
       }
     }
@@ -46,8 +46,8 @@ exports.register = async (req, res) => {
     if (jeux && jeux.length > 0) {
       for (const j of jeux) {
         await db.execute(
-          "INSERT INTO UtilisateurJeu (utilisateur_id, jeu_id, niveau) VALUES (?, ?, ?)",
-          [userId, j.jeu_id, j.niveau],
+          "INSERT INTO UtilisateurJeu (utilisateur_id, jeu_id) VALUES (?, ?)",
+          [userId, j.jeu_id],
         );
       }
     }

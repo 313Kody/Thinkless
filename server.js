@@ -18,6 +18,9 @@ app.use("/api/users", userRoutes);
 const ligueRoutes = require("./routes/ligues");
 app.use("/api/ligues", ligueRoutes);
 
+const profilRoutes = require("./routes/profil");
+app.use("/api/profil", profilRoutes);
+
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/accueil.html");
 });
