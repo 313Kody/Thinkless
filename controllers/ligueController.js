@@ -4,16 +4,24 @@ const { getPool } = require("../config/db");
 exports.getLigues = async (req, res) => {
   try {
     const db = getPool();
-    const [rows] = await db.execute(
-      `SELECT l.*, s.nom AS sport, u.pseudo AS createur,
+    const { nom } = req.query;
+
+    let sql = `SELECT l.*, s.nom AS sport, u.pseudo AS createur,
               COUNT(lu.utilisateur_id) AS nb_membres
        FROM Ligue l
        JOIN Sport s        ON s.id = l.sport_id
        JOIN Utilisateur u  ON u.id = l.createur_id
-       LEFT JOIN LigueUtilisateur lu ON lu.ligue_id = l.id
-       GROUP BY l.id
-       ORDER BY l.created_at DESC`,
-    );
+       LEFT JOIN LigueUtilisateur lu ON lu.ligue_id = l.id`;
+    
+    const params = [];
+    if (nom) {
+      sql += ` WHERE l.nom LIKE ?`;
+      params.push(`%${nom}%`);
+    }
+    
+    sql += ` GROUP BY l.id ORDER BY l.id DESC`;
+
+    const [rows] = await db.execute(sql, params);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
@@ -77,6 +85,83 @@ exports.classement = async (req, res) => {
       [req.params.id],
     );
     res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+// GET /api/ligues/:id – détails d'une ligue + membres
+exports.getLigue = async (req, res) => {
+  try {
+    const db = getPool();
+    const ligueId = req.params.id;
+    console.log("🔍 getLigue appelé avec ID:", ligueId);
+
+    const [ligues] = await db.execute(
+      `SELECT l.*, s.nom AS sport, u.pseudo AS createur
+       FROM Ligue l
+       LEFT JOIN Sport s ON s.id = l.sport_id
+       LEFT JOIN Utilisateur u ON u.id = l.createur_id
+       WHERE l.id = ?`,
+      [ligueId],
+    );
+
+    console.log("📊 Résultat requête ligue:", ligues.length, ligues);
+
+    if (ligues.length === 0) {
+      return res.status(404).json({ message: "Ligue introuvable" });
+    }
+
+    const [membres] = await db.execute(
+      `SELECT u.id, u.pseudo, u.elo, lu.points, lu.victoires, lu.defaites
+       FROM LigueUtilisateur lu
+       JOIN Utilisateur u ON u.id = lu.utilisateur_id
+       WHERE lu.ligue_id = ?
+       ORDER BY lu.points DESC`,
+      [ligueId],
+    );
+
+    console.log("👥 Membres trouvés:", membres.length);
+
+    const ligue = ligues[0];
+    ligue.membres = membres;
+    ligue.suis = membres.some((m) => m.id === req.user.id);
+
+    res.json(ligue);
+  } catch (err) {
+    console.error("❌ Erreur getLigue:", err.message, err.sql);
+    res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+// GET /api/ligues/:id/matchs – matchs d'une ligue
+exports.getMatchsLigue = async (req, res) => {
+  try {
+    const db = getPool();
+    const [matchs] = await db.execute(
+      `SELECT ms.*, s.nom AS sport, u.pseudo AS createur
+       FROM MatchSport ms
+       JOIN Sport s ON s.id = ms.sport_id
+       JOIN Utilisateur u ON u.id = ms.createur_id
+       WHERE ms.ligue_id = ?
+       ORDER BY ms.date_heure DESC`,
+      [req.params.id],
+    );
+    res.json(matchs);
+  } catch (err) {
+    res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+// POST /api/ligues/:id/quitter
+exports.quitter = async (req, res) => {
+  try {
+    const db = getPool();
+    await db.execute(
+      `DELETE FROM LigueUtilisateur WHERE ligue_id = ? AND utilisateur_id = ?`,
+      [req.params.id, req.user.id],
+    );
+    res.json({ message: "Ligue quittée" });
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
   }

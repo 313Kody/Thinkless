@@ -7,23 +7,64 @@
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-gray-950 min-h-screen text-white">
+    <!-- Modal code d'accès -->
+    <div
+      id="modal-code"
+      class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-gray-900 rounded-2xl p-8 border border-gray-700 max-w-sm w-full mx-4 text-center"
+      >
+        <div class="text-4xl mb-4">🔒</div>
+        <h3 class="text-xl font-bold mb-2">Match privé créé !</h3>
+        <p class="text-gray-400 text-sm mb-6">
+          Partage ce code à tes joueurs pour qu'ils puissent rejoindre :
+        </p>
+        <div class="bg-gray-800 rounded-xl px-6 py-4 mb-6">
+          <span
+            id="code-display"
+            class="text-3xl font-bold text-indigo-400 tracking-widest"
+          ></span>
+        </div>
+        <button
+          onclick="copyCode()"
+          class="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition mb-3"
+        >
+          Copier le code
+        </button>
+        <button
+          onclick="window.location.href = '/index.html'"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
+        >
+          Aller aux matchs
+        </button>
+      </div>
+    </div>
+
     <nav
       class="bg-gray-900 px-6 py-4 flex justify-between items-center border-b border-gray-800"
     >
       <a href="/index.html" class="text-xl font-bold text-indigo-400"
         >Thinkless</a
       >
-      <button
-        onclick="logout()"
-        class="text-sm text-red-400 hover:text-red-300 transition"
-      >
-        Déconnexion
-      </button>
+      <div class="flex items-center gap-4">
+        <button
+          onclick="window.location.href = '/index.html'"
+          class="text-sm text-gray-400 hover:text-white transition"
+        >
+          ← Retour
+        </button>
+        <button
+          onclick="logout()"
+          class="text-sm text-red-400 hover:text-red-300 transition"
+        >
+          Déconnexion
+        </button>
+      </div>
     </nav>
 
     <main class="max-w-lg mx-auto px-4 py-10">
       <h2 class="text-2xl font-bold mb-6">Créer un match</h2>
-
       <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
         <div class="mb-4">
           <label class="block text-gray-400 text-sm mb-1">Sport</label>
@@ -64,7 +105,6 @@
           />
         </div>
 
-        <!-- Équipes -->
         <div class="mb-4">
           <label class="block text-gray-400 text-sm mb-3">Équipes</label>
           <div class="grid grid-cols-2 gap-3 mb-3">
@@ -140,6 +180,13 @@
           joueurs
         </div>
 
+        <div class="mb-4 flex items-center gap-3">
+          <input id="prive" type="checkbox" class="w-4 h-4 accent-indigo-500" />
+          <label class="text-gray-400 text-sm"
+            >Match privé (accès par code uniquement)</label
+          >
+        </div>
+
         <button
           onclick="creerMatch()"
           class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
@@ -148,10 +195,6 @@
         </button>
 
         <p id="error" class="text-red-400 text-sm mt-3 text-center hidden"></p>
-        <p
-          id="success"
-          class="text-green-400 text-sm mt-3 text-center hidden"
-        ></p>
       </div>
     </main>
 
@@ -164,7 +207,17 @@
         window.location.href = "/login.html";
       }
 
-      // Calcul dynamique du total
+      function showCodeModal(code) {
+        document.getElementById("code-display").textContent = code;
+        document.getElementById("modal-code").classList.remove("hidden");
+      }
+
+      function copyCode() {
+        const code = document.getElementById("code-display").textContent;
+        navigator.clipboard.writeText(code);
+        alert("Code copié !");
+      }
+
       ["nb_equipe_a", "nb_equipe_b", "nb_remplacants"].forEach((id) => {
         document.getElementById(id).addEventListener("input", () => {
           const a = parseInt(document.getElementById("nb_equipe_a").value) || 0;
@@ -187,9 +240,7 @@
 
       async function creerMatch() {
         const error = document.getElementById("error");
-        const success = document.getElementById("success");
         error.classList.add("hidden");
-        success.classList.add("hidden");
 
         const nb_equipe_a = parseInt(
           document.getElementById("nb_equipe_a").value,
@@ -214,6 +265,7 @@
           nb_equipe_b,
           nb_remplacants,
           nb_joueurs_max: nb_equipe_a + nb_equipe_b + nb_remplacants,
+          prive: document.getElementById("prive").checked,
         };
 
         const res = await fetch("/api/matchs", {
@@ -228,9 +280,11 @@
         const data = await res.json();
 
         if (res.ok) {
-          success.textContent = "Match créé ! Redirection...";
-          success.classList.remove("hidden");
-          setTimeout(() => (window.location.href = "/index.html"), 1500);
+          if (data.code_acces) {
+            showCodeModal(data.code_acces);
+          } else {
+            window.location.href = "/index.html";
+          }
         } else {
           error.textContent = data.message;
           error.classList.remove("hidden");

@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Lobby</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 min-h-screen text-white">
+    <!-- Modal modification -->
+    <div
+      id="modal-edit"
+      class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-gray-900 rounded-2xl p-6 border border-gray-700 max-w-md w-full mx-4"
+      >
+        <h3 class="text-lg font-bold mb-4">Modifier le match</h3>
+        <div class="space-y-3">
+          <input
+            id="edit-titre"
+            type="text"
+            placeholder="Titre"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <input
+            id="edit-date"
+            type="datetime-local"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <input
+            id="edit-localisation"
+            type="text"
+            placeholder="Localisation"
+            class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <div class="grid grid-cols-2 gap-3">
+            <input
+              id="edit-nom-a"
+              type="text"
+              placeholder="Nom équipe A"
+              class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <input
+              id="edit-nom-b"
+              type="text"
+              placeholder="Nom équipe B"
+              class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="text-gray-500 text-xs mb-1 block">Joueurs A</label>
+              <input
+                id="edit-nb-a"
+                type="number"
+                min="1"
+                max="15"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="text-gray-500 text-xs mb-1 block">Joueurs B</label>
+              <input
+                id="edit-nb-b"
+                type="number"
+                min="1"
+                max="15"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="text-gray-500 text-xs mb-1 block"
+                >Remplaçants</label
+              >
+              <input
+                id="edit-nb-rem"
+                type="number"
+                min="0"
+                max="6"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-5">
+          <button
+            onclick="closeEdit()"
+            class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Annuler
+          </button>
+          <button
+            onclick="saveEdit()"
+            class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Sauvegarder
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav
+      class="bg-gray-900 px-6 py-4 flex justify-between items-center border-b border-gray-800"
+    >
+      <a href="/index.html" class="text-xl font-bold text-indigo-400"
+        >Thinkless</a
+      >
+      <div class="flex items-center gap-4">
+        <button
+          onclick="window.location.href = '/index.html'"
+          class="text-sm text-gray-400 hover:text-white transition"
+        >
+          ← Retour
+        </button>
+        <button
+          onclick="logout()"
+          class="text-sm text-red-400 hover:text-red-300 transition"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-4 py-8">
+      <!-- Infos match -->
+      <div
+        id="match-info"
+        class="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-6"
+      >
+        <div class="flex justify-between items-start">
+          <div>
+            <span
+              id="match-sport"
+              class="text-xs text-indigo-400 font-semibold uppercase"
+            ></span>
+            <h2 id="match-titre" class="text-2xl font-bold mt-1"></h2>
+            <p id="match-lieu" class="text-gray-400 text-sm mt-1"></p>
+            <p id="match-date" class="text-gray-400 text-sm"></p>
+            <p id="match-createur" class="text-gray-500 text-xs mt-2"></p>
+          </div>
+          <!-- Bouton gérer (créateur) -->
+          <div id="btn-gerer" class="hidden flex gap-2">
+            <button
+              onclick="openEdit()"
+              class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded-lg transition"
+            >
+              Modifier
+            </button>
+            <button
+              onclick="annulerMatch()"
+              class="bg-red-700 hover:bg-red-600 text-white text-sm px-3 py-2 rounded-lg transition"
+            >
+              Annuler le match
+            </button>
+          </div>
+        </div>
+        <!-- Code accès si privé -->
+        <div
+          id="code-section"
+          class="hidden mt-4 bg-gray-800 rounded-xl px-4 py-3 flex items-center justify-between"
+        >
+          <span class="text-gray-400 text-sm">Code d'accès :</span>
+          <span
+            id="match-code"
+            class="text-indigo-400 font-bold tracking-widest text-lg"
+          ></span>
+        </div>
+      </div>
+
+      <!-- Équipes -->
+      <!-- Équipes style R6 -->
+      <div class="flex items-stretch gap-2 mb-6">
+        <!-- Équipe A -->
+        <div
+          class="flex-1 bg-gray-900 rounded-2xl p-5 border border-indigo-800"
+        >
+          <h3
+            id="nom-equipe-a"
+            class="text-lg font-bold mb-4 text-indigo-400 text-center uppercase tracking-widest"
+          ></h3>
+          <div id="equipe-a-list" class="space-y-2"></div>
+          <!-- Slots vides -->
+          <div id="slots-a" class="space-y-2 mt-2"></div>
+          <p
+            id="equipe-a-count"
+            class="text-gray-500 text-xs mt-3 text-center"
+          ></p>
+          <button
+            id="btn-rejoindre-a"
+            onclick="choisirEquipe('A')"
+            class="hidden w-full mt-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-2 rounded-lg transition"
+          >
+            Rejoindre équipe A
+          </button>
+        </div>
+
+        <!-- VS -->
+        <div class="flex flex-col items-center justify-center px-2">
+          <div class="text-gray-600 font-black text-3xl tracking-tighter">
+            VS
+          </div>
+          <div
+            id="match-statut-badge"
+            class="mt-2 text-xs font-semibold px-2 py-1 rounded-full bg-green-900 text-green-400"
+          >
+            OUVERT
+          </div>
+        </div>
+
+        <!-- Équipe B -->
+        <div
+          class="flex-1 bg-gray-900 rounded-2xl p-5 border border-purple-800"
+        >
+          <h3
+            id="nom-equipe-b"
+            class="text-lg font-bold mb-4 text-purple-400 text-center uppercase tracking-widest"
+          ></h3>
+          <div id="equipe-b-list" class="space-y-2"></div>
+          <div id="slots-b" class="space-y-2 mt-2"></div>
+          <p
+            id="equipe-b-count"
+            class="text-gray-500 text-xs mt-3 text-center"
+          ></p>
+          <button
+            id="btn-rejoindre-b"
+            onclick="choisirEquipe('B')"
+            class="hidden w-full mt-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-2 rounded-lg transition"
+          >
+            Rejoindre équipe B
+          </button>
+        </div>
+      </div>
+
+      <!-- En attente -->
+      <div class="bg-gray-900 rounded-2xl p-5 border border-gray-800 mb-6">
+        <h3 class="text-lg font-bold mb-3">En attente d'équipe</h3>
+        <div id="sans-equipe-list" class="space-y-2">
+          <p class="text-gray-500 text-sm">Aucun joueur en attente</p>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!token) window.location.href = "/login.html";
+
+      const matchId = new URLSearchParams(window.location.search).get("id");
+      if (!matchId) window.location.href = "/index.html";
+
+      let matchData = null;
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      async function loadMatch() {
+        const res = await fetch(`/api/matchs/${matchId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          window.location.href = "/index.html";
+          return;
+        }
+
+        matchData = await res.json();
+        renderMatch();
+      }
+
+      function renderMatch() {
+        const m = matchData;
+        const isCreateur = m.createur_id === user.id;
+
+        document.getElementById("match-sport").textContent = m.sport;
+        document.getElementById("match-titre").textContent =
+          m.titre || "Match sans titre";
+        document.getElementById("match-lieu").textContent =
+          "📍 " + (m.localisation || "Lieu non précisé");
+        document.getElementById("match-date").textContent =
+          "📅 " + new Date(m.date_heure).toLocaleString("fr-FR");
+        document.getElementById("match-createur").textContent =
+          "Créé par " + m.createur;
+        document.getElementById("nom-equipe-a").textContent = m.nom_equipe_a;
+        document.getElementById("nom-equipe-b").textContent = m.nom_equipe_b;
+
+        // Bouton gérer visible que pour le créateur
+        if (isCreateur) {
+          document.getElementById("btn-gerer").classList.remove("hidden");
+          if (m.prive && m.code_acces) {
+            document.getElementById("code-section").classList.remove("hidden");
+            document.getElementById("match-code").textContent = m.code_acces;
+          }
+        }
+
+        const equipeA = m.participants.filter(
+          (p) => p.equipe === "A" && p.statut === "valide",
+        );
+        const equipeB = m.participants.filter(
+          (p) => p.equipe === "B" && p.statut === "valide",
+        );
+        const sansEquipe = m.participants.filter(
+          (p) => !p.equipe || p.statut === "en_attente",
+        );
+        const moi = m.participants.find((p) => p.id === user.id);
+
+        // Équipe A
+        document.getElementById("equipe-a-list").innerHTML = equipeA
+          .map((p) => renderJoueur(p, isCreateur, "indigo"))
+          .join("");
+        const slotsA = m.nb_equipe_a - equipeA.length;
+        document.getElementById("slots-a").innerHTML = Array(
+          Math.max(0, slotsA),
+        )
+          .fill(
+            '<div class="bg-gray-800 border border-dashed border-gray-700 rounded-lg px-3 py-2 text-center text-gray-600 text-xs">Slot libre</div>',
+          )
+          .join("");
+        document.getElementById("equipe-a-count").textContent =
+          `${equipeA.length} / ${m.nb_equipe_a}`;
+
+        // Bouton rejoindre équipe A
+        const btnA = document.getElementById("btn-rejoindre-a");
+        if (moi && !isCreateur) {
+          btnA.classList.remove("hidden");
+          btnA.textContent = `Rejoindre ${m.nom_equipe_a}`;
+          btnA.disabled = equipeA.length >= m.nb_equipe_a;
+        } else if (isCreateur) {
+          btnA.classList.remove("hidden");
+          btnA.textContent = `Me mettre dans ${m.nom_equipe_a}`;
+          btnA.disabled = equipeA.length >= m.nb_equipe_a;
+        }
+
+        // Équipe B
+        document.getElementById("equipe-b-list").innerHTML = equipeB
+          .map((p) => renderJoueur(p, isCreateur, "purple"))
+          .join("");
+        const slotsB = m.nb_equipe_b - equipeB.length;
+        document.getElementById("slots-b").innerHTML = Array(
+          Math.max(0, slotsB),
+        )
+          .fill(
+            '<div class="bg-gray-800 border border-dashed border-gray-700 rounded-lg px-3 py-2 text-center text-gray-600 text-xs">Slot libre</div>',
+          )
+          .join("");
+        document.getElementById("equipe-b-count").textContent =
+          `${equipeB.length} / ${m.nb_equipe_b}`;
+
+        // Bouton rejoindre équipe B
+        const btnB = document.getElementById("btn-rejoindre-b");
+        if (moi && !isCreateur) {
+          btnB.classList.remove("hidden");
+          btnB.textContent = `Rejoindre ${m.nom_equipe_b}`;
+          btnB.disabled = equipeB.length >= m.nb_equipe_b;
+        } else if (isCreateur) {
+          btnB.classList.remove("hidden");
+          btnB.textContent = `Me mettre dans ${m.nom_equipe_b}`;
+          btnB.disabled = equipeB.length >= m.nb_equipe_b;
+        }
+
+        // Sans équipe
+        document.getElementById("sans-equipe-list").innerHTML =
+          sansEquipe.length
+            ? sansEquipe
+                .map((p) => renderJoueurSansEquipe(p, isCreateur))
+                .join("")
+            : '<p class="text-gray-500 text-sm">Aucun joueur en attente</p>';
+      }
+
+      function renderJoueur(p, isCreateur, color) {
+        return `
+    <div class="flex items-center justify-between bg-gray-800 border border-${color}-900 rounded-lg px-3 py-2">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full bg-${color}-700 flex items-center justify-center text-xs font-bold">
+          ${p.pseudo.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <p class="text-sm font-medium">${p.pseudo}</p>
+          ${p.elo ? `<p class="text-xs text-gray-500">${p.elo} ELO</p>` : ""}
+        </div>
+      </div>
+      ${
+        isCreateur && p.id !== user.id
+          ? `
+        <div class="flex gap-1">
+          <button onclick="retirerEquipe(${p.id})" class="text-yellow-400 hover:text-yellow-300 text-xs px-2 py-1 rounded border border-yellow-900">Sans équipe</button>
+          <button onclick="supprimerJoueur(${p.id})" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded border border-red-900">✕</button>
+        </div>`
+          : ""
+      }
+    </div>`;
+      }
+
+      function renderJoueurSansEquipe(p, isCreateur) {
+        return `
+    <div class="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full bg-gray-600 flex items-center justify-center text-xs font-bold">
+          ${p.pseudo.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <p class="text-sm font-medium">${p.pseudo}</p>
+          ${p.elo ? `<p class="text-xs text-gray-500">${p.elo} ELO</p>` : ""}
+        </div>
+      </div>
+      ${
+        isCreateur
+          ? `
+        <div class="flex gap-1">
+          <button onclick="validerJoueur(${p.id}, 'A')" class="text-indigo-400 hover:text-indigo-300 text-xs px-2 py-1 rounded border border-indigo-900">→ A</button>
+          <button onclick="validerJoueur(${p.id}, 'B')" class="text-purple-400 hover:text-purple-300 text-xs px-2 py-1 rounded border border-purple-900">→ B</button>
+          <button onclick="supprimerJoueur(${p.id})" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded border border-red-900">✕</button>
+        </div>`
+          : '<span class="text-gray-500 text-xs">En attente</span>'
+      }
+    </div>`;
+      }
+
+      async function choisirEquipe(equipe) {
+        const res = await fetch(`/api/matchs/${matchId}/equipe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ equipe }),
+        });
+        const data = await res.json();
+        alert(data.message);
+        loadMatch();
+      }
+
+      async function validerJoueur(userId, equipe) {
+        const res = await fetch(`/api/matchs/${matchId}/valider`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ utilisateur_id: userId, equipe }),
+        });
+        const data = await res.json();
+        loadMatch();
+      }
+
+      async function retirerEquipe(userId) {
+        const res = await fetch(`/api/matchs/${matchId}/retirer-equipe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ utilisateur_id: userId }),
+        });
+        const data = await res.json();
+        loadMatch();
+      }
+
+      async function supprimerJoueur(userId) {
+        if (!confirm("Supprimer ce joueur du match ?")) return;
+        const res = await fetch(`/api/matchs/${matchId}/retirer`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ utilisateur_id: userId }),
+        });
+        const data = await res.json();
+        loadMatch();
+      }
+
+      async function annulerMatch() {
+        if (!confirm("Annuler ce match définitivement ?")) return;
+        const res = await fetch(`/api/matchs/${matchId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        window.location.href = "/index.html";
+      }
+
+      function openEdit() {
+        const m = matchData;
+        document.getElementById("edit-titre").value = m.titre || "";
+        document.getElementById("edit-date").value =
+          m.date_heure?.slice(0, 16) || "";
+        document.getElementById("edit-localisation").value =
+          m.localisation || "";
+        document.getElementById("edit-nom-a").value = m.nom_equipe_a;
+        document.getElementById("edit-nom-b").value = m.nom_equipe_b;
+        document.getElementById("edit-nb-a").value = m.nb_equipe_a;
+        document.getElementById("edit-nb-b").value = m.nb_equipe_b;
+        document.getElementById("edit-nb-rem").value = m.nb_remplacants;
+        document.getElementById("modal-edit").classList.remove("hidden");
+      }
+
+      function closeEdit() {
+        document.getElementById("modal-edit").classList.add("hidden");
+      }
+
+      async function saveEdit() {
+        const body = {
+          titre: document.getElementById("edit-titre").value,
+          date_heure: document.getElementById("edit-date").value,
+          localisation: document.getElementById("edit-localisation").value,
+          nom_equipe_a: document.getElementById("edit-nom-a").value,
+          nom_equipe_b: document.getElementById("edit-nom-b").value,
+          nb_equipe_a: parseInt(document.getElementById("edit-nb-a").value),
+          nb_equipe_b: parseInt(document.getElementById("edit-nb-b").value),
+          nb_remplacants: parseInt(
+            document.getElementById("edit-nb-rem").value,
+          ),
+        };
+
+        const res = await fetch(`/api/matchs/${matchId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+        closeEdit();
+        loadMatch();
+      }
+
+      loadMatch();
+    </script>
+  </body>
+</html>

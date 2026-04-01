@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Ligues</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 min-h-screen text-white">
+    <!-- Navbar -->
+    <nav
+      class="bg-gray-900 px-6 py-4 flex justify-between items-center border-b border-gray-800"
+    >
+      <h1 class="text-xl font-bold text-indigo-400">Thinkless</h1>
+      <div class="flex items-center gap-4">
+        <a
+          href="/index.html"
+          class="text-gray-400 hover:text-white text-sm transition"
+          >Matchs</a
+        >
+        <a
+          href="/profil.html"
+          class="text-gray-400 hover:text-white text-sm transition"
+          >Mon profil</a
+        >
+        <button
+          onclick="logout()"
+          class="text-sm text-red-400 hover:text-red-300 transition"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <!-- Contenu -->
+    <main class="max-w-5xl mx-auto px-4 py-8">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">Mes ligues</h2>
+        <a
+          href="/creer-ligue.html"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          + Créer une ligue
+        </a>
+      </div>
+
+      <!-- Filtres -->
+      <div class="flex gap-3 mb-6">
+        <input
+          id="filtre-nom"
+          type="text"
+          placeholder="Filtrer par nom..."
+          class="bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 flex-1"
+        />
+        <button
+          onclick="loadLigues()"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          Rechercher
+        </button>
+        <button
+          onclick="
+            document.getElementById('filtre-nom').value = '';
+            loadLigues();
+          "
+          class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-lg transition"
+        >
+          Tout voir
+        </button>
+      </div>
+
+      <!-- onglets -->
+      <div class="flex gap-3 mb-6 border-b border-gray-800">
+        <button
+          id="tab-mes-ligues"
+          onclick="switchTab('mes-ligues')"
+          class="pb-3 px-4 border-b-2 border-indigo-500 text-white font-semibold transition"
+        >
+          Mes ligues
+        </button>
+        <button
+          id="tab-autres-ligues"
+          onclick="switchTab('autres-ligues')"
+          class="pb-3 px-4 border-b-2 border-transparent text-gray-400 hover:text-white font-semibold transition"
+        >
+          Ligues publiques
+        </button>
+      </div>
+
+      <!-- Mes ligues -->
+      <div id="mes-ligues" class="grid gap-4 mb-8">
+        <p class="text-gray-500">Chargement...</p>
+      </div>
+
+      <!-- Autres ligues (publiques) -->
+      <div id="autres-ligues" class="hidden grid gap-4">
+        <p class="text-gray-500">Chargement...</p>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      function switchTab(tab) {
+        document.getElementById("mes-ligues").classList.toggle("hidden");
+        document.getElementById("autres-ligues").classList.toggle("hidden");
+        document.getElementById("tab-mes-ligues").classList.toggle("border-indigo-500");
+        document.getElementById("tab-mes-ligues").classList.toggle("border-transparent");
+        document.getElementById("tab-mes-ligues").classList.toggle("text-white");
+        document.getElementById("tab-mes-ligues").classList.toggle("text-gray-400");
+        document.getElementById("tab-autres-ligues").classList.toggle("border-indigo-500");
+        document.getElementById("tab-autres-ligues").classList.toggle("border-transparent");
+        document.getElementById("tab-autres-ligues").classList.toggle("text-white");
+        document.getElementById("tab-autres-ligues").classList.toggle("text-gray-400");
+      }
+
+      async function loadLigues() {
+        const nom = document.getElementById("filtre-nom").value;
+        const url = nom
+          ? `/api/ligues?nom=${encodeURIComponent(nom)}`
+          : "/api/ligues";
+
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const ligues = await res.json();
+
+        // Séparation mes ligues / autres ligues
+        const mesLigues = ligues.filter((l) => l.suis);
+        const autresLigues = ligues.filter((l) => !l.suis && l.publique);
+
+        renderLigues(mesLigues, "mes-ligues");
+        renderLigues(autresLigues, "autres-ligues");
+      }
+
+      function renderLigues(ligues, containerId) {
+        const container = document.getElementById(containerId);
+
+        if (ligues.length === 0) {
+          container.innerHTML = `<p class="text-gray-500">Aucune ligue trouvée.</p>`;
+          return;
+        }
+
+        container.innerHTML = ligues
+          .map(
+            (l) => `
+          <div class="bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-indigo-500 transition">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-xs text-indigo-400 font-semibold uppercase">${l.sport}</span>
+                <h3 class="text-lg font-bold mt-1">${l.nom}</h3>
+                <p class="text-gray-400 text-sm mt-1">${l.description || "Pas de description"}</p>
+                <p class="text-gray-500 text-xs mt-2">Créé par <span class="text-white">${l.createur}</span></p>
+                <p class="text-gray-500 text-xs mt-1">${l.nb_membres || 0} membre${l.nb_membres !== 1 ? "s" : ""}</p>
+              </div>
+              <div class="flex flex-col gap-2">
+                <button
+                  onclick="window.location.href='/ligue.html?id=${l.id}'"
+                  class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-lg transition"
+                >
+                  Voir
+                </button>
+                ${
+                  l.suis
+                    ? `<button
+                      onclick="quitterLigue(${l.id})"
+                      class="bg-red-700 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg transition"
+                    >
+                      Quitter
+                    </button>`
+                    : `<button
+                      onclick="rejoindre(${l.id})"
+                      class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition"
+                    >
+                      Rejoindre
+                    </button>`
+                }
+              </div>
+            </div>
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      async function rejoindre(id) {
+        const res = await fetch(`/api/ligues/${id}/rejoindre`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message);
+          loadLigues();
+        } else {
+          alert(data.message);
+        }
+      }
+
+      async function quitterLigue(id) {
+        if (!confirm("Quitter cette ligue ?")) return;
+        const res = await fetch(`/api/ligues/${id}/quitter`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message);
+          loadLigues();
+        } else {
+          alert(data.message);
+        }
+      }
+
+      loadLigues();
+    </script>
+  </body>
+</html>

@@ -13,12 +13,20 @@
       <a href="/index.html" class="text-xl font-bold text-indigo-400"
         >Thinkless</a
       >
-      <button
-        onclick="logout()"
-        class="text-sm text-red-400 hover:text-red-300 transition"
-      >
-        Déconnexion
-      </button>
+      <div class="flex items-center gap-4">
+        <button
+          onclick="window.location.href = '/ligues.html'"
+          class="text-sm text-gray-400 hover:text-white transition"
+        >
+          ← Retour
+        </button>
+        <button
+          onclick="logout()"
+          class="text-sm text-red-400 hover:text-red-300 transition"
+        >
+          Déconnexion
+        </button>
+      </div>
     </nav>
 
     <main class="max-w-lg mx-auto px-4 py-10">
