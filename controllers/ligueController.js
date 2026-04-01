@@ -12,13 +12,13 @@ exports.getLigues = async (req, res) => {
        JOIN Sport s        ON s.id = l.sport_id
        JOIN Utilisateur u  ON u.id = l.createur_id
        LEFT JOIN LigueUtilisateur lu ON lu.ligue_id = l.id`;
-    
+
     const params = [];
     if (nom) {
       sql += ` WHERE l.nom LIKE ?`;
       params.push(`%${nom}%`);
     }
-    
+
     sql += ` GROUP BY l.id ORDER BY l.id DESC`;
 
     const [rows] = await db.execute(sql, params);

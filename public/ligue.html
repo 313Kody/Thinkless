@@ -35,28 +35,39 @@
       <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-6">
         <div class="flex justify-between items-start mb-4">
           <div>
-            <span id="ligue-sport" class="text-xs text-indigo-400 font-semibold uppercase"></span>
+            <span
+              id="ligue-sport"
+              class="text-xs text-indigo-400 font-semibold uppercase"
+            ></span>
             <h1 id="ligue-nom" class="text-3xl font-bold mt-2"></h1>
             <p id="ligue-desc" class="text-gray-400 text-sm mt-2"></p>
             <p id="ligue-createur" class="text-gray-500 text-xs mt-3"></p>
           </div>
-          <div id="actions-ligue" class="flex gap-2 flex-col">
-          </div>
+          <div id="actions-ligue" class="flex gap-2 flex-col"></div>
         </div>
       </div>
 
       <!-- Stats -->
       <div class="grid grid-cols-3 gap-4 mb-6">
-        <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 text-center">
+        <div
+          class="bg-gray-900 rounded-xl p-4 border border-gray-800 text-center"
+        >
           <p class="text-2xl font-bold text-indigo-400" id="nb-membres">0</p>
           <p class="text-gray-400 text-sm mt-1">Membres</p>
         </div>
-        <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 text-center">
+        <div
+          class="bg-gray-900 rounded-xl p-4 border border-gray-800 text-center"
+        >
           <p class="text-2xl font-bold text-purple-400" id="nb-matchs">0</p>
           <p class="text-gray-400 text-sm mt-1">Matchs</p>
         </div>
-        <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 text-center">
-          <p id="statut-ligue" class="text-sm font-semibold px-3 py-1 rounded-full w-fit mx-auto"></p>
+        <div
+          class="bg-gray-900 rounded-xl p-4 border border-gray-800 text-center"
+        >
+          <p
+            id="statut-ligue"
+            class="text-sm font-semibold px-3 py-1 rounded-full w-fit mx-auto"
+          ></p>
         </div>
       </div>
 
@@ -121,15 +132,29 @@
       function switchTab(tab) {
         if (currentTab === tab) return;
 
-        document.getElementById(`${currentTab}-section`).classList.add("hidden");
-        document.getElementById(`tab-${currentTab}`).classList.remove("border-indigo-500");
-        document.getElementById(`tab-${currentTab}`).classList.add("border-transparent");
-        document.getElementById(`tab-${currentTab}`).classList.remove("text-white");
-        document.getElementById(`tab-${currentTab}`).classList.add("text-gray-400");
+        document
+          .getElementById(`${currentTab}-section`)
+          .classList.add("hidden");
+        document
+          .getElementById(`tab-${currentTab}`)
+          .classList.remove("border-indigo-500");
+        document
+          .getElementById(`tab-${currentTab}`)
+          .classList.add("border-transparent");
+        document
+          .getElementById(`tab-${currentTab}`)
+          .classList.remove("text-white");
+        document
+          .getElementById(`tab-${currentTab}`)
+          .classList.add("text-gray-400");
 
         document.getElementById(`${tab}-section`).classList.remove("hidden");
-        document.getElementById(`tab-${tab}`).classList.add("border-indigo-500");
-        document.getElementById(`tab-${tab}`).classList.remove("border-transparent");
+        document
+          .getElementById(`tab-${tab}`)
+          .classList.add("border-indigo-500");
+        document
+          .getElementById(`tab-${tab}`)
+          .classList.remove("border-transparent");
         document.getElementById(`tab-${tab}`).classList.add("text-white");
         document.getElementById(`tab-${tab}`).classList.remove("text-gray-400");
 
@@ -166,18 +191,23 @@
 
         document.getElementById("ligue-sport").textContent = l.sport || "Sport";
         document.getElementById("ligue-nom").textContent = l.nom;
-        document.getElementById("ligue-desc").textContent = l.description || "Pas de description";
-        document.getElementById("ligue-createur").textContent = `Créé par ${l.createur}`;
-        document.getElementById("nb-membres").textContent = l.membres?.length || 0;
+        document.getElementById("ligue-desc").textContent =
+          l.description || "Pas de description";
+        document.getElementById("ligue-createur").textContent =
+          `Créé par ${l.createur}`;
+        document.getElementById("nb-membres").textContent =
+          l.membres?.length || 0;
 
         // Statut
         const statut = document.getElementById("statut-ligue");
         if (l.publique) {
           statut.textContent = "🌐 Publique";
-          statut.className = "text-sm font-semibold px-3 py-1 rounded-full w-fit mx-auto bg-green-900 text-green-400";
+          statut.className =
+            "text-sm font-semibold px-3 py-1 rounded-full w-fit mx-auto bg-green-900 text-green-400";
         } else {
           statut.textContent = "🔒 Privée";
-          statut.className = "text-sm font-semibold px-3 py-1 rounded-full w-fit mx-auto bg-gray-800 text-gray-400";
+          statut.className =
+            "text-sm font-semibold px-3 py-1 rounded-full w-fit mx-auto bg-gray-800 text-gray-400";
         }
 
         // Actions
@@ -186,7 +216,8 @@
 
         if (isMember) {
           const btnCreerMatch = document.createElement("button");
-          btnCreerMatch.onclick = () => (window.location.href = "/creer-match.html");
+          btnCreerMatch.onclick = () =>
+            (window.location.href = "/creer-match.html");
           btnCreerMatch.className =
             "bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition";
           btnCreerMatch.textContent = "+ Match";
@@ -215,7 +246,8 @@
         const container = document.getElementById("membres-section");
 
         if (membres.length === 0) {
-          container.innerHTML = "<p class=\"text-gray-500\">Aucun membre pour le moment.</p>";
+          container.innerHTML =
+            '<p class="text-gray-500">Aucun membre pour le moment.</p>';
           return;
         }
 
@@ -242,7 +274,8 @@
           });
 
           if (!res.ok) {
-            document.getElementById("classement-list").innerHTML = "<p class=\"text-gray-500\">Erreur de chargement</p>";
+            document.getElementById("classement-list").innerHTML =
+              '<p class="text-gray-500">Erreur de chargement</p>';
             return;
           }
 
@@ -250,7 +283,8 @@
           const container = document.getElementById("classement-list");
 
           if (classement.length === 0) {
-            container.innerHTML = "<p class=\"text-gray-500\">Aucune données de classement.</p>";
+            container.innerHTML =
+              '<p class="text-gray-500">Aucune données de classement.</p>';
             return;
           }
 
@@ -272,7 +306,8 @@
             .join("");
         } catch (err) {
           console.error("Erreur classement:", err);
-          document.getElementById("classement-list").innerHTML = "<p class=\"text-red-400\">Erreur de chargement</p>";
+          document.getElementById("classement-list").innerHTML =
+            '<p class="text-red-400">Erreur de chargement</p>';
         }
       }
 
@@ -283,7 +318,8 @@
           });
 
           if (!res.ok) {
-            document.getElementById("matchs-section").innerHTML = "<p class=\"text-gray-500\">Erreur de chargement</p>";
+            document.getElementById("matchs-section").innerHTML =
+              '<p class="text-gray-500">Erreur de chargement</p>';
             return;
           }
 
@@ -292,7 +328,8 @@
           document.getElementById("nb-matchs").textContent = matchs.length;
 
           if (matchs.length === 0) {
-            container.innerHTML = "<p class=\"text-gray-500\">Aucun match pour le moment.</p>";
+            container.innerHTML =
+              '<p class="text-gray-500">Aucun match pour le moment.</p>';
             return;
           }
 
@@ -320,7 +357,8 @@
             .join("");
         } catch (err) {
           console.error("Erreur matchs:", err);
-          document.getElementById("matchs-section").innerHTML = "<p class=\"text-red-400\">Erreur de chargement</p>";
+          document.getElementById("matchs-section").innerHTML =
+            '<p class="text-red-400">Erreur de chargement</p>';
         }
       }
 
