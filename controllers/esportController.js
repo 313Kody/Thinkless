@@ -37,12 +37,7 @@ async function ensureNullableColumn(db, tableName, columnName, definition) {
 
 async function ensureEsportSchema(db) {
   await ensureNullableColumn(db, "Ligue", "sport_id", "INT UNSIGNED NULL");
-  await ensureColumn(
-    db,
-    "Ligue",
-    "jeu_id",
-    "INT UNSIGNED NULL AFTER sport_id",
-  );
+  await ensureColumn(db, "Ligue", "jeu_id", "INT UNSIGNED NULL AFTER sport_id");
   await ensureColumn(
     db,
     "MatchEsport",
@@ -221,7 +216,14 @@ exports.createMatch = async (req, res) => {
   try {
     await ensureEsportSchema(connection);
 
-    const { jeu_id, date_heure, format, slots_par_equipe, convoques, ligue_id } = req.body;
+    const {
+      jeu_id,
+      date_heure,
+      format,
+      slots_par_equipe,
+      convoques,
+      ligue_id,
+    } = req.body;
     if (!jeu_id || !date_heure) {
       return res.status(400).json({ message: "jeu_id et date_heure requis" });
     }
@@ -263,39 +265,64 @@ exports.createMatch = async (req, res) => {
 
       if (Number(leagueRows[0].jeu_id) !== Number(jeu_id)) {
         await connection.rollback();
-        return res.status(400).json({ message: "Le jeu du match doit correspondre à celui de la ligue" });
+        return res
+          .status(400)
+          .json({
+            message: "Le jeu du match doit correspondre à celui de la ligue",
+          });
       }
     }
 
-    const teamMembers = await getTeamMembers(connection, myTeam.id, Number(jeu_id));
+    const teamMembers = await getTeamMembers(
+      connection,
+      myTeam.id,
+      Number(jeu_id),
+    );
     const memberIds = new Set(teamMembers.map((member) => Number(member.id)));
     const selectedConvocations = Array.from(
       new Set(
         Array.isArray(convoques)
-          ? convoques.map((value) => Number(value)).filter((value) => Number.isInteger(value))
+          ? convoques
+              .map((value) => Number(value))
+              .filter((value) => Number.isInteger(value))
           : [],
       ),
     );
 
     if (!selectedConvocations.length) {
       await connection.rollback();
-      return res.status(400).json({ message: "Choisis au moins un joueur convoqué" });
+      return res
+        .status(400)
+        .json({ message: "Choisis au moins un joueur convoqué" });
     }
 
     if (selectedConvocations.length > slots) {
       await connection.rollback();
-      return res.status(400).json({ message: "Trop de joueurs convoqués pour ce nombre de slots" });
+      return res
+        .status(400)
+        .json({ message: "Trop de joueurs convoqués pour ce nombre de slots" });
     }
 
     if (!selectedConvocations.every((id) => memberIds.has(id))) {
       await connection.rollback();
-      return res.status(400).json({ message: "Les joueurs convoqués doivent appartenir à ton équipe" });
+      return res
+        .status(400)
+        .json({
+          message: "Les joueurs convoqués doivent appartenir à ton équipe",
+        });
     }
 
     const [result] = await connection.execute(
       `INSERT INTO MatchEsport (jeu_id, createur_id, ligue_id, date_heure, format, slots_par_equipe)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [Number(jeu_id), req.user.id, ligue_id ? Number(ligue_id) : null, date_heure, format || "BO1", slots],
+      [
+        Number(jeu_id),
+        req.user.id,
+        ligue_id ? Number(ligue_id) : null,
+        date_heure,
+        format || "BO1",
+        slots,
+      ],
     );
 
     const eloMoyen = await getTeamAverageElo(
@@ -472,7 +499,7 @@ exports.getMatch = async (req, res) => {
             elo: Number(item.elo || 1000),
             niveau: getLevelForElo("game", item.elo || 1000),
           })),
-      }))
+      })),
     );
 
     res.json({
@@ -512,7 +539,12 @@ exports.updateConvocations = async (req, res) => {
 
     const match = matchRows[0];
     if (match.statut === "termine" || match.statut === "annule") {
-      return res.status(400).json({ message: "Impossible de modifier les convocations d'un match terminé ou annulé" });
+      return res
+        .status(400)
+        .json({
+          message:
+            "Impossible de modifier les convocations d'un match terminé ou annulé",
+        });
     }
 
     const myTeam = await getMyTeamForUser(connection, req.user.id);
@@ -521,7 +553,9 @@ exports.updateConvocations = async (req, res) => {
     }
 
     if (Number(myTeam.capitaine_id) !== Number(req.user.id)) {
-      return res.status(403).json({ message: "Seul le capitaine peut modifier les convocations" });
+      return res
+        .status(403)
+        .json({ message: "Seul le capitaine peut modifier les convocations" });
     }
 
     const [teamInMatch] = await connection.execute(
@@ -530,14 +564,18 @@ exports.updateConvocations = async (req, res) => {
     );
 
     if (!teamInMatch.length) {
-      return res.status(403).json({ message: "Ton équipe ne participe pas à ce match" });
+      return res
+        .status(403)
+        .json({ message: "Ton équipe ne participe pas à ce match" });
     }
 
     const slots = Number(match.slots_par_equipe);
     const convocationsArray = Array.from(
       new Set(
         Array.isArray(convoques)
-          ? convoques.map((v) => Number(v)).filter((v) => Number.isInteger(v) && v > 0)
+          ? convoques
+              .map((v) => Number(v))
+              .filter((v) => Number.isInteger(v) && v > 0)
           : [],
       ),
     );
@@ -547,13 +585,23 @@ exports.updateConvocations = async (req, res) => {
     }
 
     if (convocationsArray.length > slots) {
-      return res.status(400).json({ message: `Maximum ${slots} joueur(s) par équipe` });
+      return res
+        .status(400)
+        .json({ message: `Maximum ${slots} joueur(s) par équipe` });
     }
 
-    const teamMembers = await getTeamMembers(connection, myTeam.id, match.jeu_id);
+    const teamMembers = await getTeamMembers(
+      connection,
+      myTeam.id,
+      match.jeu_id,
+    );
     const memberIds = new Set(teamMembers.map((m) => Number(m.id)));
     if (!convocationsArray.every((id) => memberIds.has(id))) {
-      return res.status(400).json({ message: "Tous les joueurs convoqués doivent appartenir à ton équipe" });
+      return res
+        .status(400)
+        .json({
+          message: "Tous les joueurs convoqués doivent appartenir à ton équipe",
+        });
     }
 
     await connection.beginTransaction();
@@ -779,7 +827,15 @@ exports.createEsportLigue = async (req, res) => {
     const db = getPool();
     await ensureEsportSchema(db);
 
-    const { jeu_id, nom, description, publique, nb_equipe, slots_par_equipe, equipes } = req.body;
+    const {
+      jeu_id,
+      nom,
+      description,
+      publique,
+      nb_equipe,
+      slots_par_equipe,
+      equipes,
+    } = req.body;
     const leagueName = String(nom || "").trim();
     if (!jeu_id || !leagueName) {
       return res.status(400).json({ message: "jeu_id et nom requis" });
@@ -801,20 +857,37 @@ exports.createEsportLigue = async (req, res) => {
     const teamNames = !isPublic
       ? (Array.isArray(equipes) && equipes.length
           ? equipes
-          : Array.from({ length: finalNbEquipe }, (_, index) => `Équipe ${index + 1}`)
+          : Array.from(
+              { length: finalNbEquipe },
+              (_, index) => `Équipe ${index + 1}`,
+            )
         )
           .map((teamName) => String(teamName || "").trim())
           .filter(Boolean)
       : [];
 
     if (!isPublic && teamNames.length !== finalNbEquipe) {
-      return res.status(400).json({ message: "Chaque équipe de la ligue privée doit avoir un nom." });
+      return res
+        .status(400)
+        .json({
+          message: "Chaque équipe de la ligue privée doit avoir un nom.",
+        });
     }
 
     const [result] = await db.execute(
       `INSERT INTO Ligue (sport_id, jeu_id, createur_id, nom, description, publique, nb_equipe, slots_par_equipe, code_acces)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [null, Number(jeu_id), req.user.id, leagueName, description || null, isPublic ? 1 : 0, finalNbEquipe, finalSlotsPar, code_acces],
+      [
+        null,
+        Number(jeu_id),
+        req.user.id,
+        leagueName,
+        description || null,
+        isPublic ? 1 : 0,
+        finalNbEquipe,
+        finalSlotsPar,
+        code_acces,
+      ],
     );
 
     await db.execute(
@@ -872,7 +945,9 @@ exports.rejoindreEsportLigueAvecCode = async (req, res) => {
     );
 
     if (!rows.length) {
-      return res.status(404).json({ message: "Code invalide ou ligue introuvable" });
+      return res
+        .status(404)
+        .json({ message: "Code invalide ou ligue introuvable" });
     }
 
     await db.execute(

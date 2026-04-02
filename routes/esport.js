@@ -8,19 +8,27 @@ router.get("/jeux", auth, esportController.getJeux);
 router.get("/ligues", auth, esportController.getEsportLigues);
 router.post("/ligues", auth, esportController.createEsportLigue);
 router.post(
-	"/ligues/rejoindre-code",
-	auth,
-	esportController.rejoindreEsportLigueAvecCode,
+  "/ligues/rejoindre-code",
+  auth,
+  esportController.rejoindreEsportLigueAvecCode,
 );
 router.get(
-	"/ligues/classement/:jeuId",
-	auth,
-	esportController.getClassementJeu,
+  "/ligues/classement/:jeuId",
+  auth,
+  esportController.getClassementJeu,
 );
-router.get("/ligues/:id/classement", auth, esportController.classementEsportLigue);
+router.get(
+  "/ligues/:id/classement",
+  auth,
+  esportController.classementEsportLigue,
+);
 router.get("/ligues/:id/matchs", auth, esportController.getMatchsEsportLigue);
 router.get("/ligues/:id/equipes", auth, esportController.getEsportEquipesLigue);
-router.post("/ligues/:id/rejoindre", auth, esportController.rejoindreEsportLigue);
+router.post(
+  "/ligues/:id/rejoindre",
+  auth,
+  esportController.rejoindreEsportLigue,
+);
 router.post("/ligues/:id/quitter", auth, esportController.quitterEsportLigue);
 router.get("/ligues/:id", auth, esportController.getEsportLigue);
 

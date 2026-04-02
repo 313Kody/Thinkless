@@ -114,7 +114,10 @@
           Rechercher
         </button>
         <button
-          onclick="document.getElementById('filtre-nom').value=''; loadLigues();"
+          onclick="
+            document.getElementById('filtre-nom').value = '';
+            loadLigues();
+          "
           class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg transition"
         >
           Tout voir
@@ -222,8 +225,12 @@
 
       function switchTab(tab) {
         const showPublic = tab === "autres-ligues";
-        document.getElementById("autres-ligues").classList.toggle("hidden", !showPublic);
-        document.getElementById("mes-ligues").classList.toggle("hidden", showPublic);
+        document
+          .getElementById("autres-ligues")
+          .classList.toggle("hidden", !showPublic);
+        document
+          .getElementById("mes-ligues")
+          .classList.toggle("hidden", showPublic);
         document.getElementById("tab-autres-ligues").className =
           `pb-3 px-4 border-b-2 ${showPublic ? "border-cyan-500 text-white" : "border-transparent text-slate-400 hover:text-white"} font-semibold transition`;
         document.getElementById("tab-mes-ligues").className =
@@ -249,7 +256,8 @@
       function renderLigues(ligues, containerId) {
         const container = document.getElementById(containerId);
         if (!ligues.length) {
-          container.innerHTML = '<p class="text-slate-500">Aucune ligue trouvée.</p>';
+          container.innerHTML =
+            '<p class="text-slate-500">Aucune ligue trouvée.</p>';
           return;
         }
 

@@ -248,13 +248,16 @@
                       Joueurs convoqués
                       <span class="text-slate-600">(${(t.convoques || []).length}/${matchData.slots_par_equipe})</span>
                     </p>
-                    ${t.convoques && t.convoques.length
-                      ? `<div class="space-y-2">${t.convoques
-                          .map(
-                            (player) => `<div class="text-sm text-slate-300 flex items-center justify-between"><span>${player.pseudo}</span><span class="text-slate-500">${player.niveau}</span></div>`,
-                          )
-                          .join("")}</div>`
-                      : '<p class="text-sm text-slate-500">Aucun joueur convoqué</p>'}
+                    ${
+                      t.convoques && t.convoques.length
+                        ? `<div class="space-y-2">${t.convoques
+                            .map(
+                              (player) =>
+                                `<div class="text-sm text-slate-300 flex items-center justify-between"><span>${player.pseudo}</span><span class="text-slate-500">${player.niveau}</span></div>`,
+                            )
+                            .join("")}</div>`
+                        : '<p class="text-sm text-slate-500">Aucun joueur convoqué</p>'
+                    }
                   </div>
                   ${buildConvocationPanel(t)}
                 </div>

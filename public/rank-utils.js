@@ -33,7 +33,9 @@
 
     let closest = levels[0];
     for (const level of levels) {
-      if (Math.abs(level.elo - numericElo) < Math.abs(closest.elo - numericElo)) {
+      if (
+        Math.abs(level.elo - numericElo) < Math.abs(closest.elo - numericElo)
+      ) {
         closest = level;
       }
     }
@@ -42,8 +44,12 @@
 
   function getEloForLevel(kind, label) {
     const levels = getLevels(kind);
-    const normalized = String(label || "").trim().toLowerCase();
-    const match = levels.find((level) => level.label.toLowerCase() === normalized);
+    const normalized = String(label || "")
+      .trim()
+      .toLowerCase();
+    const match = levels.find(
+      (level) => level.label.toLowerCase() === normalized,
+    );
     return match ? match.elo : levels[0].elo;
   }
 

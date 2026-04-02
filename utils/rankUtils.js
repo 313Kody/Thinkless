@@ -31,7 +31,9 @@ function getLevels(kind) {
 
 function getEloForLevel(kind, label) {
   const levels = getLevels(kind);
-  const match = levels.find((item) => normalizeLabel(item.label) === normalizeLabel(label));
+  const match = levels.find(
+    (item) => normalizeLabel(item.label) === normalizeLabel(label),
+  );
   return match ? match.elo : levels[0].elo;
 }
 

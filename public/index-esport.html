@@ -94,7 +94,9 @@
             </select>
           </label>
           <label class="block">
-            <span class="block text-sm text-slate-300 mb-2">Slots par équipe</span>
+            <span class="block text-sm text-slate-300 mb-2"
+              >Slots par équipe</span
+            >
             <input
               id="create-slots"
               type="number"
@@ -105,10 +107,14 @@
             />
           </label>
         </div>
-        <div class="mt-4 bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+        <div
+          class="mt-4 bg-slate-950/60 border border-slate-800 rounded-xl p-4"
+        >
           <div class="flex items-center justify-between gap-3 mb-3">
             <h3 class="font-semibold">Joueurs convoqués</h3>
-            <p class="text-xs text-slate-400">Choisis les joueurs de ton équipe pour ce match.</p>
+            <p class="text-xs text-slate-400">
+              Choisis les joueurs de ton équipe pour ce match.
+            </p>
           </div>
           <div id="convocation-list" class="grid md:grid-cols-2 gap-2">
             <p class="text-slate-500 text-sm">Chargement de l'effectif...</p>
@@ -201,7 +207,9 @@
       async function loadMyTeamRoster() {
         try {
           const data = await api("/api/equipes-esport/mon-equipe");
-          const selectedGameId = Number(document.getElementById("create-jeu").value);
+          const selectedGameId = Number(
+            document.getElementById("create-jeu").value,
+          );
           teamMembers = (data.membres || []).map((member) => {
             const gameData = (member.esports || []).find(
               (entry) => Number(entry.jeu_id) === selectedGameId,
@@ -283,10 +291,14 @@
             jeu_id: Number(document.getElementById("create-jeu").value),
             date_heure: document.getElementById("create-date").value,
             format: document.getElementById("create-format").value,
-            slots_par_equipe: Number(document.getElementById("create-slots").value),
+            slots_par_equipe: Number(
+              document.getElementById("create-slots").value,
+            ),
             ligue_id: currentLeagueId,
             convoques: Array.from(
-              document.querySelectorAll('#convocation-list input[type="checkbox"]:checked'),
+              document.querySelectorAll(
+                '#convocation-list input[type="checkbox"]:checked',
+              ),
             ).map((input) => Number(input.value)),
           };
 
