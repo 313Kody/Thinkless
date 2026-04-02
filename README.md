@@ -25,8 +25,6 @@ Thinkless/
 │   ├── profilController.js
 │   └── userController.js
 ├── database/
-│   ├── migration_001.sql
-│   ├── migration_002.sql
 │   ├── schema/
 │   └── thinkless_db.sql
 ├── middlewares/
