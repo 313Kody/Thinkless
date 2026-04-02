@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : thinkless-db
--- Généré le : jeu. 02 avr. 2026 à 14:02
+-- Généré le : jeu. 02 avr. 2026 à 20:18
 -- Version du serveur : 8.0.45
 -- Version de PHP : 8.3.30
 
@@ -24,6 +24,28 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `EquipeDemande`
+--
+
+CREATE TABLE `EquipeDemande` (
+  `id` int UNSIGNED NOT NULL,
+  `equipe_id` int UNSIGNED NOT NULL,
+  `utilisateur_id` int UNSIGNED NOT NULL,
+  `statut` enum('en_attente','acceptee','refusee') NOT NULL DEFAULT 'en_attente',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `decided_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Déchargement des données de la table `EquipeDemande`
+--
+
+INSERT INTO `EquipeDemande` (`id`, `equipe_id`, `utilisateur_id`, `statut`, `created_at`, `decided_at`) VALUES
+(1, 1, 1, 'acceptee', '2026-04-02 18:53:36', '2026-04-02 18:56:00');
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `EquipeEsport`
 --
 
@@ -34,6 +56,36 @@ CREATE TABLE `EquipeEsport` (
   `logo_url` varchar(255) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Déchargement des données de la table `EquipeEsport`
+--
+
+INSERT INTO `EquipeEsport` (`id`, `nom`, `capitaine_id`, `logo_url`, `created_at`) VALUES
+(1, '313PLUG', 7, '/uploads/team-logos/team-7-1775154296028-325223911.jpg', '2026-04-02 18:27:46'),
+(2, 'Arsenal Club', 8, NULL, '2026-04-02 19:39:30');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `EquipeMembre`
+--
+
+CREATE TABLE `EquipeMembre` (
+  `equipe_id` int UNSIGNED NOT NULL,
+  `utilisateur_id` int UNSIGNED NOT NULL,
+  `role` enum('capitaine','joueur') NOT NULL DEFAULT 'joueur',
+  `rejoint_le` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Déchargement des données de la table `EquipeMembre`
+--
+
+INSERT INTO `EquipeMembre` (`equipe_id`, `utilisateur_id`, `role`, `rejoint_le`) VALUES
+(1, 1, 'joueur', '2026-04-02 18:56:00'),
+(1, 7, 'capitaine', '2026-04-02 18:27:46'),
+(2, 8, 'capitaine', '2026-04-02 19:39:30');
 
 -- --------------------------------------------------------
 
@@ -67,7 +119,8 @@ INSERT INTO `JeuEsport` (`id`, `nom`, `badge_url`) VALUES
 
 CREATE TABLE `Ligue` (
   `id` int UNSIGNED NOT NULL,
-  `sport_id` int UNSIGNED NOT NULL,
+  `sport_id` int UNSIGNED DEFAULT NULL,
+  `jeu_id` int UNSIGNED DEFAULT NULL,
   `createur_id` int UNSIGNED NOT NULL,
   `nom` varchar(100) NOT NULL,
   `description` text,
@@ -82,10 +135,11 @@ CREATE TABLE `Ligue` (
 -- Déchargement des données de la table `Ligue`
 --
 
-INSERT INTO `Ligue` (`id`, `sport_id`, `createur_id`, `nom`, `description`, `publique`, `created_at`, `nb_equipe`, `slots_par_equipe`, `code_acces`) VALUES
-(1, 2, 7, 'Championnat SIO Ile-de-France', 'Un championnat de BTS SIO au basket, celui qui remporte le championnat gagne une alternance !', 0, '2026-04-02 02:11:09', 2, 5, NULL),
-(2, 1, 7, 'Championnat SIO Ile-de-France', 'Une Ligue 100% de football entre tous les BTS SIO d\'île-de-France, venez vous défier pour tenter de remporter un voyage au ski', 0, '2026-04-02 02:56:45', 10, 8, 'J1TQAL55'),
-(3, 3, 7, 'Ligue de Tennis entre SIO', 'Une Ligue 100% de Tennis entre tous les BTS SIO d\'île-de-France, venez vous défier pour tenter de remporter une alternance !', 1, '2026-04-02 03:18:07', 1, 1, NULL);
+INSERT INTO `Ligue` (`id`, `sport_id`, `jeu_id`, `createur_id`, `nom`, `description`, `publique`, `created_at`, `nb_equipe`, `slots_par_equipe`, `code_acces`) VALUES
+(1, 2, NULL, 7, 'Championnat SIO Ile-de-France', 'Un championnat de BTS SIO au basket, celui qui remporte le championnat gagne une alternance !', 0, '2026-04-02 02:11:09', 2, 5, NULL),
+(2, 1, NULL, 7, 'Championnat SIO Ile-de-France', 'Une Ligue 100% de football entre tous les BTS SIO d\'île-de-France, venez vous défier pour tenter de remporter un voyage au ski', 0, '2026-04-02 02:56:45', 10, 8, 'J1TQAL55'),
+(3, 3, NULL, 7, 'Ligue de Tennis entre SIO', 'Une Ligue 100% de Tennis entre tous les BTS SIO d\'île-de-France, venez vous défier pour tenter de remporter une alternance !', 1, '2026-04-02 03:18:07', 1, 1, NULL),
+(4, NULL, 2, 7, 'valo ligue', 'sio', 0, '2026-04-02 19:38:06', 5, 5, 'DHUOWD6A');
 
 -- --------------------------------------------------------
 
@@ -114,7 +168,12 @@ INSERT INTO `LigueEquipe` (`id`, `ligue_id`, `nom`, `created_at`) VALUES
 (7, 2, 'Lycée Louis Armand', '2026-04-02 02:56:45'),
 (8, 2, 'IRIS Paris', '2026-04-02 02:56:45'),
 (9, 2, 'CESI Nanterre', '2026-04-02 02:56:45'),
-(10, 2, 'Lycée Léonard de Vinci', '2026-04-02 02:56:45');
+(10, 2, 'Lycée Léonard de Vinci', '2026-04-02 02:56:45'),
+(11, 4, 'Équipe 1', '2026-04-02 19:38:06'),
+(12, 4, 'Équipe 2', '2026-04-02 19:38:06'),
+(13, 4, 'Équipe 3', '2026-04-02 19:38:06'),
+(14, 4, 'Équipe 4', '2026-04-02 19:38:06'),
+(15, 4, 'Équipe 5', '2026-04-02 19:38:06');
 
 -- --------------------------------------------------------
 
@@ -138,7 +197,55 @@ CREATE TABLE `LigueUtilisateur` (
 
 INSERT INTO `LigueUtilisateur` (`ligue_id`, `utilisateur_id`, `points`, `victoires`, `defaites`, `rejoint_le`, `equipe_id`) VALUES
 (2, 7, 0, 0, 0, '2026-04-02 02:56:45', NULL),
-(3, 7, 0, 0, 0, '2026-04-02 03:18:07', NULL);
+(3, 1, 0, 0, 1, '2026-04-02 17:40:30', NULL),
+(3, 7, 0, 0, 0, '2026-04-02 03:18:07', NULL),
+(3, 8, 3, 1, 0, '2026-04-02 17:30:15', NULL),
+(4, 7, 0, 0, 0, '2026-04-02 19:38:06', NULL),
+(4, 8, 0, 0, 0, '2026-04-02 19:46:40', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `MatchEquipe`
+--
+
+CREATE TABLE `MatchEquipe` (
+  `match_esport_id` int UNSIGNED NOT NULL,
+  `equipe_id` int UNSIGNED NOT NULL,
+  `elo_moyen` smallint UNSIGNED NOT NULL DEFAULT '1000'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Déchargement des données de la table `MatchEquipe`
+--
+
+INSERT INTO `MatchEquipe` (`match_esport_id`, `equipe_id`, `elo_moyen`) VALUES
+(1, 1, 1000),
+(2, 1, 1000),
+(2, 2, 1000);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `MatchEquipeConvocation`
+--
+
+CREATE TABLE `MatchEquipeConvocation` (
+  `match_esport_id` int UNSIGNED NOT NULL,
+  `equipe_id` int UNSIGNED NOT NULL,
+  `utilisateur_id` int UNSIGNED NOT NULL,
+  `convoque_le` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Déchargement des données de la table `MatchEquipeConvocation`
+--
+
+INSERT INTO `MatchEquipeConvocation` (`match_esport_id`, `equipe_id`, `utilisateur_id`, `convoque_le`) VALUES
+(1, 1, 7, '2026-04-02 19:57:30'),
+(2, 1, 1, '2026-04-02 19:38:45'),
+(2, 1, 7, '2026-04-02 19:38:45'),
+(2, 2, 8, '2026-04-02 19:54:18');
 
 -- --------------------------------------------------------
 
@@ -150,11 +257,21 @@ CREATE TABLE `MatchEsport` (
   `id` int UNSIGNED NOT NULL,
   `jeu_id` int UNSIGNED NOT NULL,
   `createur_id` int UNSIGNED NOT NULL,
+  `ligue_id` int UNSIGNED DEFAULT NULL,
   `date_heure` datetime NOT NULL,
   `format` varchar(50) DEFAULT 'BO1',
+  `slots_par_equipe` tinyint UNSIGNED NOT NULL DEFAULT '5',
   `statut` enum('ouvert','complet','en_cours','termine','annule') NOT NULL DEFAULT 'ouvert',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Déchargement des données de la table `MatchEsport`
+--
+
+INSERT INTO `MatchEsport` (`id`, `jeu_id`, `createur_id`, `ligue_id`, `date_heure`, `format`, `slots_par_equipe`, `statut`, `created_at`) VALUES
+(1, 1, 7, NULL, '2026-05-12 22:00:00', 'BO3', 5, 'ouvert', '2026-04-02 18:56:45'),
+(2, 2, 7, 4, '2026-05-15 10:15:00', 'BO3', 5, 'complet', '2026-04-02 19:38:45');
 
 -- --------------------------------------------------------
 
@@ -196,7 +313,7 @@ INSERT INTO `MatchSport` (`id`, `sport_id`, `createur_id`, `ligue_id`, `titre`, 
 (4, 3, 7, NULL, 'Reprise', '2026-05-20 20:00:00', 'Pantin', 2, 1, 1, 0, 'Joueur 1', 'Joueur 2', 'ouvert', '2026-04-02 02:28:08', 0, NULL, NULL, NULL, NULL),
 (5, 2, 7, NULL, 'entrainement collectif', '2026-04-05 13:30:00', 'Aubervilliers', 10, 5, 5, 0, 'Équipe A', 'Équipe B', 'ouvert', '2026-04-02 02:29:12', 1, 'U5UVPP2R', NULL, NULL, NULL),
 (6, 1, 7, 2, 'Lycée du Parc des Loges vs IRIS Paris', '2024-04-13 14:00:00', 'Paris', 18, 8, 8, 2, 'Lycée du Parc des Loges', 'IRIS Paris', 'ouvert', '2026-04-02 03:14:59', 0, NULL, NULL, NULL, NULL),
-(7, 3, 7, 3, 'Match 1', '2026-04-04 13:00:00', 'Noisy-le-grand', 2, 1, 1, 0, 'Joueur 1', 'Joueur 2', 'ouvert', '2026-04-02 03:20:07', 0, NULL, NULL, NULL, NULL);
+(7, 3, 7, 3, 'Match 1', '2026-04-04 13:00:00', 'Noisy-le-grand', 2, 1, 1, 0, 'Joueur 1', 'Joueur 2', 'termine', '2026-04-02 03:20:07', 0, NULL, 3, 2, 'A');
 
 -- --------------------------------------------------------
 
@@ -220,13 +337,15 @@ INSERT INTO `ParticipationMatch` (`match_id`, `utilisateur_id`, `rejoint_le`, `e
 (1, 7, '2026-04-02 02:09:33', NULL, 'en_attente'),
 (1, 8, '2026-04-02 03:38:34', NULL, 'en_attente'),
 (2, 7, '2026-04-02 02:13:11', 'B', 'valide'),
-(2, 8, '2026-04-02 03:38:21', 'B', 'en_attente'),
+(2, 8, '2026-04-02 03:38:21', 'A', 'valide'),
 (3, 7, '2026-04-02 02:26:34', 'A', 'valide'),
 (4, 7, '2026-04-02 02:28:08', 'A', 'valide'),
 (4, 8, '2026-04-02 03:38:43', 'B', 'en_attente'),
 (5, 7, '2026-04-02 02:29:12', 'A', 'valide'),
 (6, 7, '2026-04-02 03:14:59', NULL, 'en_attente'),
-(7, 7, '2026-04-02 03:20:07', 'A', 'valide');
+(7, 1, '2026-04-02 18:34:03', 'B', 'valide'),
+(7, 7, '2026-04-02 03:20:07', 'A', 'en_attente'),
+(7, 8, '2026-04-02 20:15:33', 'A', 'valide');
 
 -- --------------------------------------------------------
 
@@ -244,6 +363,13 @@ CREATE TABLE `ResultatMatch` (
   `elo_delta` smallint NOT NULL DEFAULT '0',
   `enregistre_le` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Déchargement des données de la table `ResultatMatch`
+--
+
+INSERT INTO `ResultatMatch` (`id`, `match_id`, `gagnant_id`, `perdant_id`, `score_gagnant`, `score_perdant`, `elo_delta`, `enregistre_le`) VALUES
+(1, 7, 8, 1, 3, 2, 0, '2026-04-02 20:16:05');
 
 -- --------------------------------------------------------
 
@@ -307,10 +433,10 @@ CREATE TABLE `Utilisateur` (
 --
 
 INSERT INTO `Utilisateur` (`id`, `pseudo`, `email`, `mot_de_passe`, `localisation`, `avatar_url`, `created_at`, `updated_at`) VALUES
-(1, 'Kody', 'borisephestion@gmail.com', '$2b$10$UZrY7LMZBYVP3atRsID4z.xV2R33oejss3TO8kGZefWzvEyGl1IRK', 'Paris', NULL, '2026-03-31 15:38:29', '2026-03-31 15:38:29'),
+(1, 'Kody', 'borisephestion@gmail.com', '$2b$10$UZrY7LMZBYVP3atRsID4z.xV2R33oejss3TO8kGZefWzvEyGl1IRK', 'Paris', NULL, '2026-03-31 15:38:29', '2026-04-02 20:12:23'),
 (2, 'testuser', 'test@test.com', '$2b$10$.3GHgcevt2E7VZXwjqxdXuwyylFMCSbJ2xifHu6buN5JKUwoSn2uO', 'Paris', NULL, '2026-03-31 15:42:07', '2026-03-31 15:42:07'),
 (3, 'testuser2', 'test2@test.com', '$2b$10$6bI77yAHfhINYgo/mio5Yu5G33DxLhe1GJC9HreBLDsV947Pv2VxW', 'Paris', NULL, '2026-03-31 15:42:35', '2026-03-31 15:42:35'),
-(7, '313Kody', 'kodyharvent@gmail.com', '$2b$10$XsyRzDc33jzAWcowinrNgu/NX7D1gPff.7XkCHEbwSL9Bx3yyeI/6', 'Paris', NULL, '2026-04-02 02:08:18', '2026-04-02 02:08:18'),
+(7, '313Kody', 'kodyharvent@gmail.com', '$2b$10$XsyRzDc33jzAWcowinrNgu/NX7D1gPff.7XkCHEbwSL9Bx3yyeI/6', 'Paris', NULL, '2026-04-02 02:08:18', '2026-04-02 20:12:23'),
 (8, 'John', 'johntimber@gmail.com', '$2b$10$KJeai/Kbf44D0EXwiwJENuysFTS4tuPTAx0d8CJ74pRLqYPiMhPza', 'Paris', NULL, '2026-04-02 03:34:42', '2026-04-02 03:34:42');
 
 -- --------------------------------------------------------
@@ -359,10 +485,10 @@ CREATE TABLE `UtilisateurSport` (
 INSERT INTO `UtilisateurSport` (`utilisateur_id`, `sport_id`, `elo`, `victoires`, `defaites`) VALUES
 (7, 1, 1000, 0, 0),
 (7, 2, 1000, 0, 0),
-(7, 3, 1000, 0, 0),
+(7, 3, 1000, 1, 0),
 (8, 1, 1000, 0, 0),
 (8, 2, 1000, 0, 0),
-(8, 3, 1000, 0, 0),
+(8, 3, 1000, 1, 0),
 (8, 5, 1000, 0, 0);
 
 -- --------------------------------------------------------
@@ -372,12 +498,12 @@ INSERT INTO `UtilisateurSport` (`utilisateur_id`, `sport_id`, `elo`, `victoires`
 -- (Voir ci-dessous la vue réelle)
 --
 CREATE TABLE `v_classement_jeu` (
-`pseudo` varchar(50)
-,`jeu` varchar(100)
+`defaites` int unsigned
 ,`elo` int
-,`victoires` int unsigned
-,`defaites` int unsigned
+,`jeu` varchar(100)
+,`pseudo` varchar(50)
 ,`rang` bigint unsigned
+,`victoires` int unsigned
 );
 
 -- --------------------------------------------------------
@@ -387,12 +513,12 @@ CREATE TABLE `v_classement_jeu` (
 -- (Voir ci-dessous la vue réelle)
 --
 CREATE TABLE `v_classement_sport` (
-`pseudo` varchar(50)
-,`sport` varchar(100)
+`defaites` int unsigned
 ,`elo` int
-,`victoires` int unsigned
-,`defaites` int unsigned
+,`pseudo` varchar(50)
 ,`rang` bigint unsigned
+,`sport` varchar(100)
+,`victoires` int unsigned
 );
 
 -- --------------------------------------------------------
@@ -402,11 +528,24 @@ CREATE TABLE `v_classement_sport` (
 -- (Voir ci-dessous la vue réelle)
 --
 CREATE TABLE `v_elo_equipe_par_jeu` (
+`elo_moyen` decimal(11,0)
+,`equipe_id` int unsigned
+,`jeu_id` int unsigned
+,`nb_joueurs` bigint
 );
 
 --
 -- Index pour les tables déchargées
 --
+
+--
+-- Index pour la table `EquipeDemande`
+--
+ALTER TABLE `EquipeDemande`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_equipe_demande_unique` (`equipe_id`,`utilisateur_id`),
+  ADD KEY `idx_equipe_demande_statut` (`statut`),
+  ADD KEY `fk_ed_utilisateur` (`utilisateur_id`);
 
 --
 -- Index pour la table `EquipeEsport`
@@ -415,6 +554,13 @@ ALTER TABLE `EquipeEsport`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `nom` (`nom`),
   ADD KEY `fk_equipe_capitaine` (`capitaine_id`);
+
+--
+-- Index pour la table `EquipeMembre`
+--
+ALTER TABLE `EquipeMembre`
+  ADD PRIMARY KEY (`equipe_id`,`utilisateur_id`),
+  ADD UNIQUE KEY `utilisateur_id` (`utilisateur_id`);
 
 --
 -- Index pour la table `JeuEsport`
@@ -446,6 +592,21 @@ ALTER TABLE `LigueUtilisateur`
   ADD KEY `fk_lu_utilisateur` (`utilisateur_id`),
   ADD KEY `idx_ligueutilisateur_pts` (`ligue_id`,`points` DESC),
   ADD KEY `fk_lu_equipe` (`equipe_id`);
+
+--
+-- Index pour la table `MatchEquipe`
+--
+ALTER TABLE `MatchEquipe`
+  ADD PRIMARY KEY (`match_esport_id`,`equipe_id`),
+  ADD KEY `fk_meq_equipe` (`equipe_id`);
+
+--
+-- Index pour la table `MatchEquipeConvocation`
+--
+ALTER TABLE `MatchEquipeConvocation`
+  ADD PRIMARY KEY (`match_esport_id`,`equipe_id`,`utilisateur_id`),
+  ADD KEY `fk_mec_equipe` (`equipe_id`),
+  ADD KEY `fk_mec_utilisateur` (`utilisateur_id`);
 
 --
 -- Index pour la table `MatchEsport`
@@ -524,10 +685,16 @@ ALTER TABLE `UtilisateurSport`
 --
 
 --
+-- AUTO_INCREMENT pour la table `EquipeDemande`
+--
+ALTER TABLE `EquipeDemande`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT pour la table `EquipeEsport`
 --
 ALTER TABLE `EquipeEsport`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT pour la table `JeuEsport`
@@ -539,19 +706,19 @@ ALTER TABLE `JeuEsport`
 -- AUTO_INCREMENT pour la table `Ligue`
 --
 ALTER TABLE `Ligue`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT pour la table `LigueEquipe`
 --
 ALTER TABLE `LigueEquipe`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT pour la table `MatchEsport`
 --
 ALTER TABLE `MatchEsport`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT pour la table `MatchSport`
@@ -563,7 +730,7 @@ ALTER TABLE `MatchSport`
 -- AUTO_INCREMENT pour la table `ResultatMatch`
 --
 ALTER TABLE `ResultatMatch`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `ResultatMatchEsport`
@@ -615,10 +782,24 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 
 --
+-- Contraintes pour la table `EquipeDemande`
+--
+ALTER TABLE `EquipeDemande`
+  ADD CONSTRAINT `fk_ed_equipe` FOREIGN KEY (`equipe_id`) REFERENCES `EquipeEsport` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_ed_utilisateur` FOREIGN KEY (`utilisateur_id`) REFERENCES `Utilisateur` (`id`) ON DELETE CASCADE;
+
+--
 -- Contraintes pour la table `EquipeEsport`
 --
 ALTER TABLE `EquipeEsport`
   ADD CONSTRAINT `fk_equipe_capitaine` FOREIGN KEY (`capitaine_id`) REFERENCES `Utilisateur` (`id`) ON DELETE RESTRICT;
+
+--
+-- Contraintes pour la table `EquipeMembre`
+--
+ALTER TABLE `EquipeMembre`
+  ADD CONSTRAINT `fk_em_equipe` FOREIGN KEY (`equipe_id`) REFERENCES `EquipeEsport` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_em_utilisateur` FOREIGN KEY (`utilisateur_id`) REFERENCES `Utilisateur` (`id`) ON DELETE CASCADE;
 
 --
 -- Contraintes pour la table `Ligue`
@@ -640,6 +821,21 @@ ALTER TABLE `LigueUtilisateur`
   ADD CONSTRAINT `fk_lu_equipe` FOREIGN KEY (`equipe_id`) REFERENCES `LigueEquipe` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_lu_ligue` FOREIGN KEY (`ligue_id`) REFERENCES `Ligue` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_lu_utilisateur` FOREIGN KEY (`utilisateur_id`) REFERENCES `Utilisateur` (`id`) ON DELETE CASCADE;
+
+--
+-- Contraintes pour la table `MatchEquipe`
+--
+ALTER TABLE `MatchEquipe`
+  ADD CONSTRAINT `fk_meq_equipe` FOREIGN KEY (`equipe_id`) REFERENCES `EquipeEsport` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_meq_match` FOREIGN KEY (`match_esport_id`) REFERENCES `MatchEsport` (`id`) ON DELETE CASCADE;
+
+--
+-- Contraintes pour la table `MatchEquipeConvocation`
+--
+ALTER TABLE `MatchEquipeConvocation`
+  ADD CONSTRAINT `fk_mec_equipe` FOREIGN KEY (`equipe_id`) REFERENCES `EquipeEsport` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_mec_match` FOREIGN KEY (`match_esport_id`) REFERENCES `MatchEsport` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_mec_utilisateur` FOREIGN KEY (`utilisateur_id`) REFERENCES `Utilisateur` (`id`) ON DELETE CASCADE;
 
 --
 -- Contraintes pour la table `MatchEsport`
