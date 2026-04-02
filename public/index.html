@@ -118,6 +118,33 @@
       <div id="matchs-list" class="grid gap-4">
         <p class="text-gray-500">Chargement...</p>
       </div>
+
+      <!-- Section rejoindre par code -->
+      <div class="mt-8 bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <h3 class="text-lg font-bold mb-2">Rejoindre un match privé</h3>
+        <p class="text-gray-400 text-sm mb-4">
+          Tu as un code d'accès ? Entre-le ici
+        </p>
+        <div class="flex gap-3">
+          <input
+            id="input-code-match-index"
+            type="text"
+            placeholder="Ex: AB12CD34"
+            maxlength="8"
+            class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 tracking-widest uppercase"
+          />
+          <button
+            onclick="rejoindreMatchIndexAvecCode()"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition"
+          >
+            🔒 Rejoindre
+          </button>
+        </div>
+        <p
+          id="code-error-match-index"
+          class="text-red-400 text-sm mt-3 hidden"
+        ></p>
+      </div>
     </main>
 
     <script>
@@ -165,6 +192,38 @@
 
         if (res.ok) {
           fermerModalCodeMatch();
+          window.location.href = `/match.html?id=${data.match_id}`;
+        } else {
+          err.textContent = data.message;
+          err.classList.remove("hidden");
+        }
+      }
+
+      async function rejoindreMatchIndexAvecCode() {
+        const code = document
+          .getElementById("input-code-match-index")
+          .value.trim()
+          .toUpperCase();
+        const err = document.getElementById("code-error-match-index");
+        err.classList.add("hidden");
+
+        if (!code) {
+          err.textContent = "Entre un code";
+          err.classList.remove("hidden");
+          return;
+        }
+
+        const res = await fetch("/api/matchs/rejoindre-code", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ code_acces: code }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
           window.location.href = `/match.html?id=${data.match_id}`;
         } else {
           err.textContent = data.message;
