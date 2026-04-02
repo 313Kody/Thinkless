@@ -1,6 +1,6 @@
 # Thinkless
 
-Thinkless est une plateforme web de gestion de matchs et de ligues sportives réalisée pour le BTS SIO. L'application permet de créer un compte, rejoindre des sports, organiser des matchs publics ou privés, créer des ligues, et gérer des ligues privées avec équipes pré-créées.
+Thinkless est une plateforme web de gestion de matchs et de ligues sportives et e-sport réalisée pour le BTS SIO. L'application permet de créer un compte, rejoindre des sports et des jeux, organiser des matchs publics ou privés, créer des ligues, et gérer des ligues privées avec equipes pre-creees.
 
 ## Stack
 
@@ -20,6 +20,7 @@ Thinkless/
 │   └── db.js
 ├── controllers/
 │   ├── authController.js
+│   ├── esportController.js
 │   ├── ligueController.js
 │   ├── matchController.js
 │   ├── profilController.js
@@ -32,16 +33,25 @@ Thinkless/
 ├── public/
 │   ├── accueil.html
 │   ├── creer-ligue.html
+│   ├── creer-ligue-esport.html
 │   ├── creer-match.html
+│   ├── equipe-esport.html
 │   ├── index.html
+│   ├── index-esport.html
 │   ├── ligue.html
+│   ├── ligue-esport-detail.html
+│   ├── ligue-esport.html
 │   ├── ligues.html
+│   ├── ligues-esport.html
 │   ├── login.html
 │   ├── match.html
+│   ├── match-esport.html
 │   ├── profil.html
+│   ├── rank-utils.js
 │   └── register.html
 ├── routes/
 │   ├── auth.js
+│   ├── esport.js
 │   ├── ligues.js
 │   ├── matchs.js
 │   ├── profil.js
@@ -58,13 +68,30 @@ Thinkless/
 - inscription et connexion JWT
 - profil utilisateur avec sports, stats et informations de compte
 
-### Matchs
+### Matchs sport
 
 - création de matchs publics et privés
 - génération d'un code d'accès pour les matchs privés
 - affichage des matchs ouverts
 - accès direct au lobby du match après création
 - prise en charge des sports solo et des sports en équipe
+
+### E-sport
+
+- creation d'equipes e-sport (capitaine + membres)
+- demandes d'adhesion a une equipe e-sport
+- creation de matchs e-sport (format, slots par equipe)
+- participation des equipes aux matchs e-sport
+- convocation des joueurs par le capitaine avec limite de slots
+- enregistrement des resultats par equipe
+
+### Ligues e-sport
+
+- listing des ligues e-sport
+- creation de ligues e-sport publiques/privees
+- rejoindre une ligue privee par code
+- lobby ligue e-sport (membres, classement, matchs)
+- affichage du code prive dans le lobby pour les membres
 
 ### Sports solo
 
@@ -136,7 +163,7 @@ docker-compose down
 
 ## Points API utiles
 
-### API ligues
+### API ligues sport
 
 - `GET /api/ligues`
 - `POST /api/ligues`
@@ -146,6 +173,27 @@ docker-compose down
 - `GET /api/ligues/:id/equipes`
 - `POST /api/ligues/:id/rejoindre`
 - `POST /api/ligues/:id/quitter`
+
+### API e-sport
+
+- `GET /api/esport/jeux`
+- `GET /api/esport/ligues`
+- `POST /api/esport/ligues`
+- `POST /api/esport/ligues/rejoindre-code`
+- `GET /api/esport/ligues/classement/:jeuId`
+- `GET /api/esport/ligues/:id`
+- `GET /api/esport/ligues/:id/classement`
+- `GET /api/esport/ligues/:id/matchs`
+- `GET /api/esport/ligues/:id/equipes`
+- `POST /api/esport/ligues/:id/rejoindre`
+- `POST /api/esport/ligues/:id/quitter`
+
+- `GET /api/esport/matchs`
+- `POST /api/esport/matchs`
+- `GET /api/esport/matchs/:id`
+- `POST /api/esport/matchs/:id/rejoindre`
+- `POST /api/esport/matchs/:id/convoques`
+- `POST /api/esport/matchs/:id/resultat`
 
 ### API matchs
 
@@ -160,3 +208,4 @@ docker-compose down
 - les matchs créés depuis une ligue ne remontent pas dans la liste globale des matchs
 - les matchs privés restent visibles par leur créateur et leurs participants
 - la logique de classement dépend de la présence ou non d'équipes pré-créées dans la ligue
+- la table `Ligue` est partagee entre sport et e-sport (`sport_id` ou `jeu_id` selon le contexte)
