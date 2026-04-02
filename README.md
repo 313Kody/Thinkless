@@ -25,8 +25,6 @@ Thinkless/
 │   ├── profilController.js
 │   └── userController.js
 ├── database/
-│   ├── migration_001.sql
-│   ├── migration_002.sql
 │   ├── schema/
 │   └── thinkless_db.sql
 ├── middlewares/
@@ -48,9 +46,6 @@ Thinkless/
 │   ├── matchs.js
 │   ├── profil.js
 │   └── users.js
-├── db-export.bat
-├── db-import.bat
-├── db-reset.bat
 ├── docker-compose.yml
 ├── package.json
 └── server.js
