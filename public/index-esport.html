@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless E-sport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/rank-utils.js"></script>
+  </head>
+  <body class="min-h-screen text-white bg-slate-950">
+    <nav
+      class="bg-slate-900 border-b border-cyan-900/40 px-6 py-4 flex items-center justify-between"
+    >
+      <a href="/index-esport.html" class="text-xl font-bold text-cyan-300"
+        >Thinkless E-sport</a
+      >
+      <div class="flex items-center gap-4">
+        <a
+          href="/equipe-esport.html"
+          class="text-cyan-300 hover:text-cyan-200 text-sm transition"
+          >Equipes E-sport</a
+        >
+        <a
+          href="/ligues-esport.html"
+          class="text-cyan-300 hover:text-cyan-200 text-sm transition"
+          >Ligues E-sport</a
+        >
+        <a
+          href="/index.html"
+          class="text-slate-400 hover:text-white text-sm transition"
+          >Sport classique</a
+        >
+        <a
+          href="/profil.html"
+          class="text-slate-400 hover:text-white text-sm transition"
+          >Mon profil</a
+        >
+        <button
+          onclick="goBack('/index.html')"
+          class="text-slate-400 hover:text-white text-sm transition"
+        >
+          ← Retour
+        </button>
+        <button
+          onclick="logout()"
+          class="text-red-400 hover:text-red-300 text-sm transition"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+      <section
+        class="bg-gradient-to-r from-cyan-900/30 via-blue-900/20 to-slate-900 border border-cyan-800/40 rounded-2xl p-6 mb-8"
+      >
+        <h1 class="text-2xl font-black tracking-tight">Mode E-sport</h1>
+        <p class="text-slate-300 mt-2 text-sm">
+          Cette section utilise les tables dédiées e-sport: JeuEsport,
+          MatchEsport, MatchEquipe, ResultatMatchEsport, UtilisateurJeu et
+          EquipeEsport.
+        </p>
+      </section>
+
+      <section
+        class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-8"
+      >
+        <h2 class="text-lg font-bold mb-4">Créer un match e-sport</h2>
+        <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <label class="block">
+            <span class="block text-sm text-slate-300 mb-2">Jeu</span>
+            <select
+              id="create-jeu"
+              class="w-full bg-slate-800 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+            ></select>
+          </label>
+          <label class="block">
+            <span class="block text-sm text-slate-300 mb-2">Date et heure</span>
+            <input
+              id="create-date"
+              type="datetime-local"
+              class="w-full bg-slate-800 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+          </label>
+          <label class="block">
+            <span class="block text-sm text-slate-300 mb-2">Format</span>
+            <select
+              id="create-format"
+              class="w-full bg-slate-800 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+            >
+              <option>BO1</option>
+              <option>BO3</option>
+              <option>BO5</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="block text-sm text-slate-300 mb-2">Slots par équipe</span>
+            <input
+              id="create-slots"
+              type="number"
+              min="1"
+              max="10"
+              value="5"
+              class="w-full bg-slate-800 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+          </label>
+        </div>
+        <div class="mt-4 bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <h3 class="font-semibold">Joueurs convoqués</h3>
+            <p class="text-xs text-slate-400">Choisis les joueurs de ton équipe pour ce match.</p>
+          </div>
+          <div id="convocation-list" class="grid md:grid-cols-2 gap-2">
+            <p class="text-slate-500 text-sm">Chargement de l'effectif...</p>
+          </div>
+        </div>
+        <button
+          onclick="createMatch()"
+          class="mt-4 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold px-4 py-2 rounded-lg transition"
+        >
+          + Créer le match
+        </button>
+        <p id="create-feedback" class="text-sm mt-3 text-slate-300"></p>
+      </section>
+
+      <section>
+        <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+          <h2 class="text-xl font-bold">Matchs e-sport ouverts</h2>
+          <select
+            id="filter-jeu"
+            onchange="loadMatchs()"
+            class="md:ml-auto bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+          ></select>
+        </div>
+        <div id="matchs-list" class="grid gap-4">
+          <p class="text-slate-500">Chargement...</p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+
+      let jeux = [];
+      let teamMembers = [];
+      let currentLeagueId = null;
+
+      function goBack(fallback) {
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+        window.location.href = fallback;
+      }
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/accueil.html";
+      }
+
+      async function api(path, options = {}) {
+        const res = await fetch(path, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+          },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.message || "Erreur serveur");
+        }
+        return data;
+      }
+
+      function renderConvocations() {
+        const container = document.getElementById("convocation-list");
+        if (!teamMembers.length) {
+          container.innerHTML =
+            '<p class="text-amber-300 text-sm">Rejoins d\'abord une équipe e-sport pour créer un match.</p>';
+          return;
+        }
+
+        container.innerHTML = teamMembers
+          .map(
+            (member) => `
+              <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 cursor-pointer">
+                <span>
+                  <span class="font-semibold block">${member.pseudo}</span>
+                  <span class="text-xs text-slate-400">${window.RankUtils.formatRank("game", member.selected_elo || 1000)}</span>
+                </span>
+                <input type="checkbox" value="${member.id}" class="h-4 w-4 accent-cyan-500" checked />
+              </label>
+            `,
+          )
+          .join("");
+      }
+
+      async function loadMyTeamRoster() {
+        try {
+          const data = await api("/api/equipes-esport/mon-equipe");
+          const selectedGameId = Number(document.getElementById("create-jeu").value);
+          teamMembers = (data.membres || []).map((member) => {
+            const gameData = (member.esports || []).find(
+              (entry) => Number(entry.jeu_id) === selectedGameId,
+            );
+            return {
+              id: member.id,
+              pseudo: member.pseudo,
+              selected_elo: gameData?.elo || 1000,
+            };
+          });
+        } catch {
+          teamMembers = [];
+        }
+        renderConvocations();
+      }
+
+      async function loadJeux() {
+        jeux = await api("/api/esport/jeux");
+        const createSelect = document.getElementById("create-jeu");
+        const filterSelect = document.getElementById("filter-jeu");
+        const params = new URLSearchParams(window.location.search);
+        const preselectedGameId = Number(params.get("jeu_id"));
+        currentLeagueId = Number(params.get("ligue_id")) || null;
+
+        createSelect.innerHTML = jeux
+          .map((j) => `<option value="${j.id}">${j.nom}</option>`)
+          .join("");
+        createSelect.onchange = loadMyTeamRoster;
+
+        if (preselectedGameId) {
+          createSelect.value = String(preselectedGameId);
+        }
+
+        filterSelect.innerHTML =
+          '<option value="">Tous les jeux</option>' +
+          jeux.map((j) => `<option value="${j.id}">${j.nom}</option>`).join("");
+      }
+
+      async function loadMatchs() {
+        const jeuId = document.getElementById("filter-jeu").value;
+        const qs = jeuId ? `?jeu_id=${encodeURIComponent(jeuId)}` : "";
+        const matchs = await api(`/api/esport/matchs${qs}`);
+
+        const container = document.getElementById("matchs-list");
+        if (!matchs.length) {
+          container.innerHTML =
+            '<p class="text-slate-500">Aucun match e-sport ouvert.</p>';
+          return;
+        }
+
+        container.innerHTML = matchs
+          .map(
+            (m) => `
+            <div class="bg-slate-900 border border-slate-800 hover:border-cyan-600/60 rounded-xl p-5 transition">
+              <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div>
+                  <p class="text-xs uppercase text-cyan-300 font-semibold">${m.jeu}</p>
+                  <h3 class="text-lg font-bold mt-1">${m.affichage_equipes || "En attente d'une équipe"}</h3>
+                  <p class="text-slate-400 text-sm mt-1">Format ${m.format} • ${m.slots_par_equipe} slots • ${new Date(m.date_heure).toLocaleString("fr-FR")}</p>
+                  <p class="text-slate-500 text-xs mt-2">Créé par ${m.createur}</p>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="window.location.href='/match-esport.html?id=${m.id}'" class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg transition">Voir</button>
+                  <button ${m.can_join ? "" : "disabled"} onclick="joinMatch(${m.id})" class="bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-950 font-bold text-sm px-4 py-2 rounded-lg transition">Rejoindre</button>
+                </div>
+              </div>
+            </div>
+          `,
+          )
+          .join("");
+      }
+
+      async function createMatch() {
+        const feedback = document.getElementById("create-feedback");
+        feedback.textContent = "";
+
+        try {
+          const payload = {
+            jeu_id: Number(document.getElementById("create-jeu").value),
+            date_heure: document.getElementById("create-date").value,
+            format: document.getElementById("create-format").value,
+            slots_par_equipe: Number(document.getElementById("create-slots").value),
+            ligue_id: currentLeagueId,
+            convoques: Array.from(
+              document.querySelectorAll('#convocation-list input[type="checkbox"]:checked'),
+            ).map((input) => Number(input.value)),
+          };
+
+          const created = await api("/api/esport/matchs", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+
+          feedback.textContent = "Match créé avec succès.";
+          window.location.href = `/match-esport.html?id=${created.id}`;
+        } catch (err) {
+          feedback.textContent = err.message;
+        }
+      }
+
+      async function joinMatch(id) {
+        try {
+          await api(`/api/esport/matchs/${id}/rejoindre`, { method: "POST" });
+          window.location.href = `/match-esport.html?id=${id}`;
+        } catch (err) {
+          alert(err.message);
+        }
+      }
+
+      (async function init() {
+        try {
+          await loadJeux();
+          await loadMyTeamRoster();
+          await loadMatchs();
+        } catch (err) {
+          document.getElementById("matchs-list").innerHTML =
+            `<p class="text-red-400">${err.message}</p>`;
+        }
+      })();
+    </script>
+  </body>
+</html>

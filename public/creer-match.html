@@ -247,6 +247,7 @@
 
     <script>
       const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
       let createdMatchId = null;
       const SOLO_SPORTS = new Set(["tennis", "badminton", "padel"]);
       const sportsById = new Map();
@@ -416,6 +417,12 @@
           if (!res.ok) return;
 
           ligueConfig = await res.json();
+          if (Number(ligueConfig.createur_id) !== Number(user.id)) {
+            alert("Seul le createur de la ligue peut ajouter un match");
+            window.location.href = `/ligue.html?id=${ligueIdFromUrl}`;
+            return;
+          }
+
           if (ligueConfig?.sport_id) {
             document.getElementById("sport_id").value = String(
               ligueConfig.sport_id,
@@ -452,6 +459,17 @@
       async function creerMatch() {
         const error = document.getElementById("error");
         error.classList.add("hidden");
+
+        // Double garde: meme si le front a ete ouvert manuellement, on bloque ici.
+        if (
+          ligueIdFromUrl &&
+          (!ligueConfig || Number(ligueConfig.createur_id) !== Number(user.id))
+        ) {
+          error.textContent =
+            "Seul le createur de la ligue peut ajouter un match";
+          error.classList.remove("hidden");
+          return;
+        }
 
         let body;
         if (hasEquipesPrecreated) {

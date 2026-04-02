@@ -371,7 +371,10 @@
 
       function renderMatch() {
         const m = matchData;
-        const isCreateur = m.createur_id === user.id;
+        const canManage = Boolean(m.can_manage);
+        const canJoin = Boolean(m.can_join);
+        const moi = m.participants.find((p) => p.id === user.id);
+        const estParticipant = !!moi;
 
         document.getElementById("match-sport").textContent = m.sport;
         document.getElementById("match-titre").textContent =
@@ -399,7 +402,7 @@
         }
 
         // Bouton gérer visible que pour le créateur
-        if (isCreateur) {
+        if (canManage) {
           document.getElementById("btn-gerer").classList.remove("hidden");
           document
             .getElementById("btn-resultat")
@@ -411,7 +414,6 @@
         }
 
         // Section "rejoindre par code" visible si match privé + non participant + ouvert
-        const estParticipant = !!moi;
         if (m.prive && !estParticipant && m.statut === "ouvert") {
           document
             .getElementById("section-code-match")
@@ -439,11 +441,9 @@
         const sansEquipe = m.participants.filter(
           (p) => !p.equipe || p.statut === "en_attente",
         );
-        const moi = m.participants.find((p) => p.id === user.id);
-
         // Équipe A
         document.getElementById("equipe-a-list").innerHTML = equipeA
-          .map((p) => renderJoueur(p, isCreateur, "indigo"))
+          .map((p) => renderJoueur(p, canManage, "indigo"))
           .join("");
         const slotsA = m.nb_equipe_a - equipeA.length;
         document.getElementById("slots-a").innerHTML = Array(
@@ -460,19 +460,21 @@
         const btnA = document.getElementById("btn-rejoindre-a");
         if (m.statut !== "ouvert") {
           btnA.classList.add("hidden");
-        } else if (moi && !isCreateur) {
+        } else if (canManage) {
           btnA.classList.remove("hidden");
-          btnA.textContent = `Rejoindre ${m.nom_equipe_a}`;
+          btnA.textContent = `Me placer dans ${m.nom_equipe_a}`;
           btnA.disabled = equipeA.length >= m.nb_equipe_a;
-        } else if (isCreateur) {
+        } else if (moi || canJoin) {
           btnA.classList.remove("hidden");
-          btnA.textContent = `Me mettre dans ${m.nom_equipe_a}`;
+          btnA.textContent = `Demander ${m.nom_equipe_a}`;
           btnA.disabled = equipeA.length >= m.nb_equipe_a;
+        } else {
+          btnA.classList.add("hidden");
         }
 
         // Équipe B
         document.getElementById("equipe-b-list").innerHTML = equipeB
-          .map((p) => renderJoueur(p, isCreateur, "purple"))
+          .map((p) => renderJoueur(p, canManage, "purple"))
           .join("");
         const slotsB = m.nb_equipe_b - equipeB.length;
         document.getElementById("slots-b").innerHTML = Array(
@@ -489,26 +491,28 @@
         const btnB = document.getElementById("btn-rejoindre-b");
         if (m.statut !== "ouvert") {
           btnB.classList.add("hidden");
-        } else if (moi && !isCreateur) {
+        } else if (canManage) {
           btnB.classList.remove("hidden");
-          btnB.textContent = `Rejoindre ${m.nom_equipe_b}`;
+          btnB.textContent = `Me placer dans ${m.nom_equipe_b}`;
           btnB.disabled = equipeB.length >= m.nb_equipe_b;
-        } else if (isCreateur) {
+        } else if (moi || canJoin) {
           btnB.classList.remove("hidden");
-          btnB.textContent = `Me mettre dans ${m.nom_equipe_b}`;
+          btnB.textContent = `Demander ${m.nom_equipe_b}`;
           btnB.disabled = equipeB.length >= m.nb_equipe_b;
+        } else {
+          btnB.classList.add("hidden");
         }
 
         // Sans équipe
         document.getElementById("sans-equipe-list").innerHTML =
           sansEquipe.length
             ? sansEquipe
-                .map((p) => renderJoueurSansEquipe(p, isCreateur))
+                .map((p) => renderJoueurSansEquipe(p, canManage))
                 .join("")
             : '<p class="text-gray-500 text-sm">Aucun joueur en attente</p>';
       }
 
-      function renderJoueur(p, isCreateur, color) {
+      function renderJoueur(p, canManage, color) {
         return `
     <div class="flex items-center justify-between bg-gray-800 border border-${color}-900 rounded-lg px-3 py-2">
       <div class="flex items-center gap-2">
@@ -521,7 +525,7 @@
         </div>
       </div>
       ${
-        isCreateur && p.id !== user.id
+        canManage && p.id !== user.id
           ? `
         <div class="flex gap-1">
           <button onclick="retirerEquipe(${p.id})" class="text-yellow-400 hover:text-yellow-300 text-xs px-2 py-1 rounded border border-yellow-900">Sans équipe</button>
@@ -532,7 +536,7 @@
     </div>`;
       }
 
-      function renderJoueurSansEquipe(p, isCreateur) {
+      function renderJoueurSansEquipe(p, canManage) {
         return `
     <div class="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
       <div class="flex items-center gap-2">
@@ -545,7 +549,7 @@
         </div>
       </div>
       ${
-        isCreateur
+        canManage
           ? `
         <div class="flex gap-1">
           <button onclick="validerJoueur(${p.id}, 'A')" class="text-indigo-400 hover:text-indigo-300 text-xs px-2 py-1 rounded border border-indigo-900">→ A</button>
@@ -567,6 +571,11 @@
           body: JSON.stringify({ equipe }),
         });
         const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Impossible de rejoindre ce match");
+          return;
+        }
+
         alert(data.message);
         loadMatch();
       }
@@ -581,6 +590,10 @@
           body: JSON.stringify({ utilisateur_id: userId, equipe }),
         });
         const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Action interdite");
+          return;
+        }
         loadMatch();
       }
 
@@ -594,6 +607,10 @@
           body: JSON.stringify({ utilisateur_id: userId }),
         });
         const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Action interdite");
+          return;
+        }
         loadMatch();
       }
 
@@ -608,6 +625,10 @@
           body: JSON.stringify({ utilisateur_id: userId }),
         });
         const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Action interdite");
+          return;
+        }
         loadMatch();
       }
 
@@ -617,6 +638,11 @@
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) {
+          const data = await res.json();
+          alert(data.message || "Action interdite");
+          return;
+        }
         window.location.href = "/index.html";
       }
 
@@ -704,6 +730,11 @@
           },
           body: JSON.stringify(body),
         });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Action interdite");
+          return;
+        }
         closeEdit();
         loadMatch();
       }

@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Créer une ligue E-sport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-950 min-h-screen text-white">
+    <nav class="bg-slate-900 px-6 py-4 flex justify-between items-center border-b border-cyan-900/40">
+      <a href="/index-esport.html" class="text-xl font-bold text-cyan-300">Thinkless E-sport</a>
+      <div class="flex items-center gap-4">
+        <button onclick="goBack('/ligues-esport.html')" class="text-sm text-slate-400 hover:text-white transition">← Retour</button>
+        <button onclick="logout()" class="text-sm text-red-400 hover:text-red-300 transition">Déconnexion</button>
+      </div>
+    </nav>
+
+    <main class="max-w-2xl mx-auto px-4 py-10">
+      <h2 class="text-2xl font-bold mb-2">Créer une ligue E-sport</h2>
+      <p id="step-indicator" class="text-slate-400 text-sm mb-6"></p>
+
+      <div class="bg-slate-900 rounded-2xl p-6 border border-slate-800">
+        <div id="step1" class="space-y-4">
+          <h3 class="text-lg font-bold mb-4">Infos de la ligue</h3>
+          <div>
+            <label class="block text-slate-400 text-sm mb-1">Nom de la ligue</label>
+            <input id="nom" type="text" placeholder="Ex: Ligue Valorant SIO" class="w-full bg-slate-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-cyan-500" />
+          </div>
+          <div>
+            <label class="block text-slate-400 text-sm mb-1">Description</label>
+            <textarea id="description" placeholder="Décris ta ligue..." rows="3" class="w-full bg-slate-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
+          </div>
+          <div class="flex items-center gap-3">
+            <input id="publique" type="checkbox" class="w-4 h-4 accent-cyan-500" />
+            <label class="text-slate-400 text-sm">Ligue publique (visible par tous)</label>
+          </div>
+          <div id="code-privee-info" class="hidden bg-slate-800 rounded-lg px-4 py-3 text-sm text-slate-300">
+            ℹ️ Les joueurs devront entrer un code pour rejoindre cette ligue.
+          </div>
+        </div>
+
+        <div id="step2" class="hidden space-y-4">
+          <h3 class="text-lg font-bold mb-4">Choisir le jeu</h3>
+          <select id="jeu_id" class="w-full bg-slate-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-cyan-500">
+            <option value="">Chargement...</option>
+          </select>
+        </div>
+
+        <div id="step3" class="hidden space-y-4">
+          <h3 class="text-lg font-bold mb-4">Configuration des équipes</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-slate-400 text-sm mb-1">Nombre d'équipes</label>
+              <input id="nb_equipe" type="number" min="2" max="16" value="2" class="w-full bg-slate-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-cyan-500" />
+            </div>
+            <div>
+              <label class="block text-slate-400 text-sm mb-1">Slots par équipe</label>
+              <input id="slots_par_equipe" type="number" min="1" max="10" value="5" class="w-full bg-slate-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-cyan-500" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-sm mb-2">Noms des équipes</label>
+            <div id="equipes-list" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <p id="error" class="text-red-400 text-sm mt-3 text-center hidden"></p>
+        <p id="success" class="text-green-400 text-sm mt-3 text-center hidden"></p>
+
+        <div class="flex gap-3 mt-6">
+          <button type="button" id="btn-prev" onclick="prevStep()" class="hidden flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 rounded-lg transition">← Retour</button>
+          <button type="button" id="btn-next" onclick="nextStep()" class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-semibold py-2 rounded-lg transition">Suivant →</button>
+          <button type="button" id="btn-create" onclick="creerLigue()" class="hidden flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 rounded-lg transition">✓ Créer la ligue</button>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+
+      let currentStep = 1;
+      let equipesNames = [];
+
+      function showError(message) {
+        const error = document.getElementById("error");
+        const success = document.getElementById("success");
+        success.classList.add("hidden");
+        error.textContent = message;
+        error.classList.remove("hidden");
+      }
+
+      function showSuccess(message) {
+        const error = document.getElementById("error");
+        const success = document.getElementById("success");
+        error.classList.add("hidden");
+        success.textContent = message;
+        success.classList.remove("hidden");
+      }
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      function goBack(fallback) {
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+        window.location.href = fallback;
+      }
+
+      function updateStepIndicator() {
+        const totalSteps = !document.getElementById("publique").checked ? 3 : 2;
+        document.getElementById("step-indicator").textContent = `Étape ${currentStep} sur ${totalSteps}`;
+      }
+
+      function updateUI() {
+        const isPrivate = !document.getElementById("publique").checked;
+        document.getElementById("step1").classList.toggle("hidden", currentStep !== 1);
+        document.getElementById("step2").classList.toggle("hidden", currentStep !== 2);
+        document.getElementById("step3").classList.toggle("hidden", currentStep !== 3 || !isPrivate);
+        document.getElementById("code-privee-info").classList.toggle("hidden", !isPrivate);
+        document.getElementById("btn-prev").classList.toggle("hidden", currentStep === 1);
+        document.getElementById("btn-next").classList.toggle("hidden", currentStep === 3 || (currentStep === 2 && !isPrivate));
+        document.getElementById("btn-create").classList.toggle("hidden", !(currentStep === 3 || (currentStep === 2 && !isPrivate)));
+        updateStepIndicator();
+      }
+
+      function renderEquipesInputs() {
+        const nb = parseInt(document.getElementById("nb_equipe").value, 10) || 2;
+        const container = document.getElementById("equipes-list");
+        if (equipesNames.length !== nb) {
+          equipesNames = Array(nb)
+            .fill(null)
+            .map((_, i) => document.getElementById(`equipe-name-${i}`)?.value || `Équipe ${i + 1}`);
+        }
+        container.innerHTML = equipesNames
+          .map((name, i) => `<input id="equipe-name-${i}" type="text" value="${name}" placeholder="Nom équipe ${i + 1}" class="w-full bg-slate-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-cyan-500" />`)
+          .join("");
+        document.querySelectorAll("[id^='equipe-name-']").forEach((input, i) => {
+          input.addEventListener("change", (e) => {
+            equipesNames[i] = e.target.value;
+          });
+        });
+      }
+
+      function nextStep() {
+        const isPrivate = !document.getElementById("publique").checked;
+        const maxStep = isPrivate ? 3 : 2;
+        if (currentStep === 1 && !document.getElementById("nom").value.trim()) {
+          showError("Le nom de la ligue est requis.");
+          return;
+        }
+        if (currentStep < maxStep) {
+          if (currentStep === 2 && isPrivate) {
+            renderEquipesInputs();
+          }
+          currentStep += 1;
+          updateUI();
+        }
+      }
+
+      function prevStep() {
+        if (currentStep > 1) {
+          currentStep -= 1;
+          updateUI();
+        }
+      }
+
+      async function loadGames() {
+        try {
+          const res = await fetch("/api/esport/jeux", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const games = await res.json();
+          if (!res.ok) {
+            throw new Error(games.message || "Impossible de charger les jeux e-sport.");
+          }
+          document.getElementById("jeu_id").innerHTML = games.length
+            ? games.map((game) => `<option value="${game.id}">${game.nom}</option>`).join("")
+            : '<option value="">Aucun jeu disponible</option>';
+        } catch (err) {
+          document.getElementById("jeu_id").innerHTML =
+            '<option value="">Erreur de chargement</option>';
+          showError(err.message || "Impossible de charger les jeux e-sport.");
+        }
+      }
+
+      async function creerLigue() {
+        const btnCreate = document.getElementById("btn-create");
+        btnCreate.disabled = true;
+        btnCreate.classList.add("opacity-60", "cursor-not-allowed");
+
+        try {
+          const isPrivate = !document.getElementById("publique").checked;
+          const jeuId = parseInt(document.getElementById("jeu_id").value, 10);
+          const nom = document.getElementById("nom").value.trim();
+          const description = document.getElementById("description").value.trim();
+
+          if (!nom) {
+            throw new Error("Le nom de la ligue est requis.");
+          }
+
+          if (!Number.isInteger(jeuId)) {
+            throw new Error("Choisis un jeu e-sport valide.");
+          }
+
+          if (isPrivate && (!equipesNames.length || equipesNames.some((name) => !String(name).trim()))) {
+            renderEquipesInputs();
+            equipesNames = Array.from(document.querySelectorAll("[id^='equipe-name-']")).map((input) => input.value.trim());
+            if (equipesNames.some((name) => !name)) {
+              throw new Error("Renseigne un nom pour chaque équipe.");
+            }
+          }
+
+          showSuccess("Création de la ligue en cours...");
+
+          const body = {
+            jeu_id: jeuId,
+            nom,
+            description,
+            publique: document.getElementById("publique").checked,
+            nb_equipe: isPrivate ? parseInt(document.getElementById("nb_equipe").value, 10) : null,
+            slots_par_equipe: isPrivate ? parseInt(document.getElementById("slots_par_equipe").value, 10) : null,
+            equipes: isPrivate ? equipesNames : null,
+          };
+
+          const res = await fetch("/api/esport/ligues", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            throw new Error(data.message || "Création de ligue impossible.");
+          }
+
+          showSuccess("Ligue e-sport créée ! Redirection...");
+          setTimeout(() => {
+            window.location.href = "/ligues-esport.html";
+          }, 1200);
+        } catch (err) {
+          showError(err.message || "Création de ligue impossible.");
+        } finally {
+          btnCreate.disabled = false;
+          btnCreate.classList.remove("opacity-60", "cursor-not-allowed");
+        }
+      }
+
+      document.getElementById("publique").addEventListener("change", () => {
+        if (currentStep > 2 && document.getElementById("publique").checked) {
+          currentStep = 2;
+        }
+        updateUI();
+      });
+
+      document.getElementById("nb_equipe").addEventListener("change", renderEquipesInputs);
+
+      loadGames();
+      updateUI();
+    </script>
+  </body>
+</html>

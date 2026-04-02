@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Ligues E-sport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-950 min-h-screen text-white">
+    <div
+      id="modal-code-ligue"
+      class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-slate-900 rounded-2xl p-6 border border-slate-700 max-w-sm w-full mx-4 text-center"
+      >
+        <div class="text-3xl mb-3">🔒</div>
+        <h3 class="text-lg font-bold mb-2">Ligue privée E-sport</h3>
+        <p class="text-slate-400 text-sm mb-4">
+          Entre le code d'accès pour rejoindre cette ligue.
+        </p>
+        <input
+          id="input-code-ligue"
+          type="text"
+          placeholder="Ex: AB12CD34"
+          maxlength="8"
+          class="w-full bg-slate-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-cyan-500 text-center tracking-widest uppercase mb-4"
+        />
+        <div class="flex gap-3">
+          <button
+            onclick="fermerModalCodeLigue()"
+            class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Annuler
+          </button>
+          <button
+            onclick="rejoindreLigueAvecCode()"
+            class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-semibold py-2 rounded-lg transition"
+          >
+            Rejoindre
+          </button>
+        </div>
+        <p id="code-error-ligue" class="text-red-400 text-sm mt-3 hidden"></p>
+      </div>
+    </div>
+
+    <nav
+      class="bg-slate-900 px-6 py-4 flex justify-between items-center border-b border-cyan-900/40"
+    >
+      <a href="/index-esport.html" class="text-xl font-bold text-cyan-300"
+        >Thinkless E-sport</a
+      >
+      <div class="flex items-center gap-4">
+        <a
+          href="/ligue-esport.html"
+          class="text-slate-300 hover:text-white text-sm transition"
+          >Classements</a
+        >
+        <a
+          href="/equipe-esport.html"
+          class="text-slate-300 hover:text-white text-sm transition"
+          >Equipes</a
+        >
+        <button
+          onclick="goBack('/index-esport.html')"
+          class="text-slate-400 hover:text-white text-sm transition"
+        >
+          ← Retour
+        </button>
+        <button
+          onclick="logout()"
+          class="text-sm text-red-400 hover:text-red-300 transition"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+      <div class="flex justify-between items-center mb-6 gap-4 flex-wrap">
+        <div>
+          <h2 class="text-2xl font-bold">Ligues E-sport</h2>
+          <p class="text-slate-400 text-sm mt-1">
+            Crée, rejoins et gère tes ligues par jeu.
+          </p>
+        </div>
+        <div class="flex gap-3">
+          <a
+            href="/ligue-esport.html"
+            class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+          >
+            Classements par jeu
+          </a>
+          <a
+            href="/creer-ligue-esport.html"
+            class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 text-sm font-semibold px-4 py-2 rounded-lg transition"
+          >
+            + Créer une ligue
+          </a>
+        </div>
+      </div>
+
+      <div class="flex gap-3 mb-6">
+        <input
+          id="filtre-nom"
+          type="text"
+          placeholder="Filtrer par nom..."
+          class="bg-slate-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-cyan-500 flex-1"
+        />
+        <button
+          onclick="loadLigues()"
+          class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          Rechercher
+        </button>
+        <button
+          onclick="document.getElementById('filtre-nom').value=''; loadLigues();"
+          class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg transition"
+        >
+          Tout voir
+        </button>
+      </div>
+
+      <div class="flex gap-3 mb-6 border-b border-slate-800">
+        <button
+          id="tab-autres-ligues"
+          onclick="switchTab('autres-ligues')"
+          class="pb-3 px-4 border-b-2 border-cyan-500 text-white font-semibold transition"
+        >
+          Ligues publiques
+        </button>
+        <button
+          id="tab-mes-ligues"
+          onclick="switchTab('mes-ligues')"
+          class="pb-3 px-4 border-b-2 border-transparent text-slate-400 hover:text-white font-semibold transition"
+        >
+          Mes ligues
+        </button>
+      </div>
+
+      <div id="mes-ligues" class="hidden grid gap-4 mb-8">
+        <p class="text-slate-500">Chargement...</p>
+      </div>
+
+      <div id="autres-ligues" class="grid gap-4">
+        <p class="text-slate-500">Chargement...</p>
+      </div>
+
+      <div class="mt-8 bg-slate-900 rounded-2xl p-6 border border-slate-800">
+        <h3 class="text-lg font-bold mb-2">Rejoindre une ligue privée</h3>
+        <p class="text-slate-400 text-sm mb-4">
+          Tu as un code d'accès ? Entre-le ici.
+        </p>
+        <button
+          onclick="ouvrirModalCodeLigue()"
+          class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-semibold px-4 py-2 rounded-lg transition"
+        >
+          🔒 Rejoindre par code
+        </button>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      function goBack(fallback) {
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+        window.location.href = fallback;
+      }
+
+      function ouvrirModalCodeLigue() {
+        document.getElementById("input-code-ligue").value = "";
+        document.getElementById("code-error-ligue").classList.add("hidden");
+        document.getElementById("modal-code-ligue").classList.remove("hidden");
+      }
+
+      function fermerModalCodeLigue() {
+        document.getElementById("modal-code-ligue").classList.add("hidden");
+      }
+
+      async function rejoindreLigueAvecCode() {
+        const code = document
+          .getElementById("input-code-ligue")
+          .value.trim()
+          .toUpperCase();
+        const err = document.getElementById("code-error-ligue");
+        err.classList.add("hidden");
+
+        if (!code) {
+          err.textContent = "Entre un code";
+          err.classList.remove("hidden");
+          return;
+        }
+
+        const res = await fetch("/api/esport/ligues/rejoindre-code", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ code_acces: code }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          fermerModalCodeLigue();
+          window.location.href = `/ligue-esport-detail.html?id=${data.ligue_id}`;
+        } else {
+          err.textContent = data.message;
+          err.classList.remove("hidden");
+        }
+      }
+
+      function switchTab(tab) {
+        const showPublic = tab === "autres-ligues";
+        document.getElementById("autres-ligues").classList.toggle("hidden", !showPublic);
+        document.getElementById("mes-ligues").classList.toggle("hidden", showPublic);
+        document.getElementById("tab-autres-ligues").className =
+          `pb-3 px-4 border-b-2 ${showPublic ? "border-cyan-500 text-white" : "border-transparent text-slate-400 hover:text-white"} font-semibold transition`;
+        document.getElementById("tab-mes-ligues").className =
+          `pb-3 px-4 border-b-2 ${showPublic ? "border-transparent text-slate-400 hover:text-white" : "border-cyan-500 text-white"} font-semibold transition`;
+      }
+
+      async function loadLigues() {
+        const nom = document.getElementById("filtre-nom").value;
+        const url = nom
+          ? `/api/esport/ligues?nom=${encodeURIComponent(nom)}`
+          : "/api/esport/ligues";
+
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const ligues = await res.json();
+        const mesLigues = ligues.filter((l) => l.suis);
+        const autresLigues = ligues.filter((l) => !l.suis && l.publique);
+        renderLigues(mesLigues, "mes-ligues");
+        renderLigues(autresLigues, "autres-ligues");
+      }
+
+      function renderLigues(ligues, containerId) {
+        const container = document.getElementById(containerId);
+        if (!ligues.length) {
+          container.innerHTML = '<p class="text-slate-500">Aucune ligue trouvée.</p>';
+          return;
+        }
+
+        container.innerHTML = ligues
+          .map(
+            (l) => `
+          <div class="bg-slate-900 rounded-xl p-5 border border-slate-800 hover:border-cyan-500 transition">
+            <div class="flex justify-between items-start gap-4">
+              <div>
+                <span class="text-xs text-cyan-300 font-semibold uppercase">${l.jeu}</span>
+                <h3 class="text-lg font-bold mt-1">${l.nom}</h3>
+                <p class="text-slate-400 text-sm mt-1">${l.description || "Pas de description"}</p>
+                <p class="text-slate-500 text-xs mt-2">Créé par <span class="text-white">${l.createur}</span></p>
+                <p class="text-slate-500 text-xs mt-1">${l.nb_membres || 0} membre${l.nb_membres !== 1 ? "s" : ""}</p>
+              </div>
+              <div class="flex flex-col gap-2">
+                <button onclick="window.location.href='/ligue-esport-detail.html?id=${l.id}'" class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg transition">Voir</button>
+                ${
+                  l.suis
+                    ? `<button onclick="quitterLigue(${l.id})" class="bg-red-700 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg transition">Quitter</button>`
+                    : `<button onclick="rejoindre(${l.id})" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 text-sm px-4 py-2 rounded-lg transition">Rejoindre</button>`
+                }
+              </div>
+            </div>
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      async function rejoindre(id) {
+        const res = await fetch(`/api/esport/ligues/${id}/rejoindre`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message);
+          loadLigues();
+        } else {
+          alert(data.message);
+        }
+      }
+
+      async function quitterLigue(id) {
+        if (!confirm("Quitter cette ligue ?")) return;
+        const res = await fetch(`/api/esport/ligues/${id}/quitter`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message);
+          loadLigues();
+        } else {
+          alert(data.message);
+        }
+      }
+
+      loadLigues();
+    </script>
+  </body>
+</html>

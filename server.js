@@ -21,6 +21,13 @@ app.use("/api/ligues", ligueRoutes);
 const profilRoutes = require("./routes/profil");
 app.use("/api/profil", profilRoutes);
 
+const equipeRoutes = require("./routes/equipes");
+app.use("/api/equipes", equipeRoutes);
+app.use("/api/equipes-esport", equipeRoutes);
+
+const esportRoutes = require("./routes/esport");
+app.use("/api/esport", esportRoutes);
+
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/accueil.html");
 });

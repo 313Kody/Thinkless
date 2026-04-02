@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Thinkless – Ligue</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/rank-utils.js"></script>
   </head>
   <body class="bg-gray-950 min-h-screen text-white">
     <!-- Navbar -->
@@ -44,6 +45,29 @@
             <p id="ligue-createur" class="text-gray-500 text-xs mt-3"></p>
           </div>
           <div id="actions-ligue" class="flex gap-2 flex-col"></div>
+        </div>
+        <div
+          id="private-code-card"
+          class="hidden mt-4 rounded-xl border border-amber-800/60 bg-amber-950/40 px-4 py-3"
+        >
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-amber-300 font-semibold">
+                Code privé de la ligue
+              </p>
+              <p class="text-gray-400 text-sm mt-1">
+                Partage ce code pour permettre à d'autres joueurs de rejoindre la ligue.
+              </p>
+            </div>
+            <button
+              type="button"
+              onclick="copyPrivateCode()"
+              class="bg-amber-500 hover:bg-amber-400 text-gray-950 text-sm font-semibold px-4 py-2 rounded-lg transition"
+            >
+              Copier
+            </button>
+          </div>
+          <p id="private-code-value" class="mt-3 font-mono text-lg text-amber-200 tracking-[0.3em]"></p>
         </div>
       </div>
 
@@ -130,6 +154,17 @@
         window.location.href = "/login.html";
       }
 
+      async function copyPrivateCode() {
+        const code = ligueData?.code_acces;
+        if (!code) return;
+        try {
+          await navigator.clipboard.writeText(code);
+          alert("Code copié dans le presse-papiers");
+        } catch {
+          alert(`Code de la ligue: ${code}`);
+        }
+      }
+
       function switchTab(tab) {
         if (currentTab === tab) return;
 
@@ -189,6 +224,7 @@
 
       function renderLigue() {
         const l = ligueData;
+        const canCreateMatch = l.createur_id === user.id;
 
         document.getElementById("ligue-sport").textContent = l.sport || "Sport";
         document.getElementById("ligue-nom").textContent = l.nom;
@@ -198,6 +234,15 @@
           `Créé par ${l.createur}`;
         document.getElementById("nb-membres").textContent =
           l.membres?.length || 0;
+
+        const codeCard = document.getElementById("private-code-card");
+        if (!l.publique && l.code_acces && isMember) {
+          codeCard.classList.remove("hidden");
+          document.getElementById("private-code-value").textContent = l.code_acces;
+        } else {
+          codeCard.classList.add("hidden");
+          document.getElementById("private-code-value").textContent = "";
+        }
 
         // Statut
         const statut = document.getElementById("statut-ligue");
@@ -215,7 +260,7 @@
         const actions = document.getElementById("actions-ligue");
         actions.innerHTML = "";
 
-        if (isMember) {
+        if (isMember && canCreateMatch) {
           const btnCreerMatch = document.createElement("button");
           btnCreerMatch.onclick = () =>
             (window.location.href = `/creer-match.html?ligue_id=${ligueId}`);
@@ -223,7 +268,9 @@
             "bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition";
           btnCreerMatch.textContent = "+ Match";
           actions.appendChild(btnCreerMatch);
+        }
 
+        if (isMember) {
           const btnQuitter = document.createElement("button");
           btnQuitter.onclick = () => quitterLigue();
           btnQuitter.className =
@@ -258,7 +305,7 @@
           <div class="bg-gray-900 rounded-lg p-4 border border-gray-800 flex items-center justify-between">
             <div>
               <p class="font-semibold">${m.pseudo}</p>
-              ${m.elo ? `<p class="text-gray-400 text-sm">${m.elo} ELO</p>` : ""}
+              ${m.elo ? `<p class="text-gray-400 text-sm">${window.RankUtils.getLevelForElo("sport", m.elo)}</p>` : ""}
               <p class="text-gray-500 text-xs mt-1">${m.victoires || 0}V - ${m.defaites || 0}D | ${m.points || 0} pts</p>
             </div>
             ${m.id === ligueData.createur_id ? '<span class="bg-indigo-900 text-indigo-400 text-xs px-2 py-1 rounded">Créateur</span>' : ""}

@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless Match E-sport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/rank-utils.js"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-white">
+    <nav
+      class="bg-slate-900 border-b border-cyan-900/40 px-6 py-4 flex items-center justify-between"
+    >
+      <a href="/index-esport.html" class="text-xl font-bold text-cyan-300"
+        >Thinkless E-sport</a
+      >
+      <div class="flex items-center gap-4">
+        <a
+          href="/ligues-esport.html"
+          class="text-slate-300 hover:text-white text-sm transition"
+          >Ligues E-sport</a
+        >
+        <a
+          href="/equipe-esport.html"
+          class="text-slate-300 hover:text-white text-sm transition"
+          >Equipes</a
+        >
+        <button
+          onclick="goBack('/index-esport.html')"
+          class="text-slate-400 hover:text-white text-sm transition"
+        >
+          ← Retour
+        </button>
+        <button
+          onclick="logout()"
+          class="text-red-400 hover:text-red-300 text-sm transition"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+      <section
+        id="match-card"
+        class="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-6"
+      >
+        <p class="text-slate-500">Chargement...</p>
+      </section>
+
+      <section
+        id="teams-card"
+        class="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-6"
+      >
+        <h2 class="text-lg font-bold mb-4">Équipes</h2>
+        <div id="teams-list" class="grid md:grid-cols-2 gap-4"></div>
+      </section>
+
+      <section
+        id="result-card"
+        class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-6"
+      >
+        <h2 class="text-lg font-bold mb-3">Résultat</h2>
+        <p id="result-text" class="text-slate-200"></p>
+      </section>
+
+      <section
+        id="actions-card"
+        class="bg-slate-900 border border-slate-800 rounded-2xl p-6"
+      >
+        <h2 class="text-lg font-bold mb-4">Actions</h2>
+        <div class="flex flex-wrap gap-3 mb-5">
+          <button
+            id="btn-join"
+            onclick="joinMatch()"
+            class="hidden bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold px-4 py-2 rounded-lg transition"
+          >
+            Rejoindre avec mon équipe
+          </button>
+        </div>
+
+        <div id="result-form" class="hidden">
+          <h3 class="font-semibold mb-2">Enregistrer le résultat</h3>
+          <div class="grid md:grid-cols-3 gap-3">
+            <select
+              id="winner-team"
+              class="bg-slate-800 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+            ></select>
+            <input
+              id="score-win"
+              type="number"
+              min="0"
+              placeholder="Score gagnant"
+              class="bg-slate-800 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+            <input
+              id="score-lose"
+              type="number"
+              min="0"
+              placeholder="Score perdant"
+              class="bg-slate-800 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+          </div>
+          <button
+            onclick="saveResult()"
+            class="mt-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg transition"
+          >
+            Valider le résultat
+          </button>
+          <p id="result-feedback" class="text-sm mt-3 text-slate-300"></p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+      const matchId = new URLSearchParams(window.location.search).get("id");
+      if (!matchId) window.location.href = "/index-esport.html";
+
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      let matchData = null;
+
+      function goBack(fallback) {
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+        window.location.href = fallback;
+      }
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/accueil.html";
+      }
+
+      async function api(path, options = {}) {
+        const res = await fetch(path, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+          },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Erreur serveur");
+        return data;
+      }
+
+      function buildConvocationPanel(team) {
+        const slots = matchData.slots_par_equipe;
+        const convoquedIds = new Set((team.convoques || []).map((c) => c.id));
+        const canEdit =
+          matchData.statut !== "termine" &&
+          matchData.statut !== "annule" &&
+          matchData.my_team &&
+          Number(matchData.my_team.id) === Number(team.id) &&
+          Number(matchData.my_team.capitaine_id) === Number(currentUser.id);
+
+        if (!canEdit) return "";
+
+        const checkboxes = (team.membres || [])
+          .map(
+            (m) => `
+              <label class="flex items-center gap-2 text-sm cursor-pointer py-1">
+                <input type="checkbox"
+                  class="convoc-cb accent-cyan-500 w-4 h-4"
+                  data-team="${team.id}"
+                  value="${m.id}"
+                  ${convoquedIds.has(m.id) ? "checked" : ""}
+                  onchange="enforceSlotLimit(this, ${slots})"
+                />
+                <span class="text-slate-200">${m.pseudo}</span>
+                <span class="ml-auto text-slate-500 text-xs">${m.niveau}</span>
+              </label>`,
+          )
+          .join("");
+
+        return `
+          <div class="mt-4 border-t border-slate-700 pt-3">
+            <p class="text-xs uppercase tracking-wide text-cyan-400 font-semibold mb-1">
+              Gérer les convocations <span class="text-slate-500 normal-case font-normal">(max ${slots})</span>
+            </p>
+            <div id="convoc-list-${team.id}" class="space-y-0 mb-3">${checkboxes}</div>
+            <button
+              type="button"
+              onclick="saveConvocations(${team.id})"
+              class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-semibold text-sm px-4 py-1.5 rounded-lg transition"
+            >Enregistrer</button>
+            <p id="convoc-feedback-${team.id}" class="text-xs mt-2 text-slate-400"></p>
+          </div>`;
+      }
+
+      function enforceSlotLimit(checkbox, slots) {
+        const teamId = checkbox.dataset.team;
+        const allCbs = document.querySelectorAll(
+          `.convoc-cb[data-team="${teamId}"]`,
+        );
+        const checked = Array.from(allCbs).filter((cb) => cb.checked);
+        if (checked.length > slots) {
+          checkbox.checked = false;
+        }
+      }
+
+      async function saveConvocations(teamId) {
+        const feedback = document.getElementById(`convoc-feedback-${teamId}`);
+        feedback.textContent = "";
+        const checked = Array.from(
+          document.querySelectorAll(
+            `.convoc-cb[data-team="${teamId}"]:checked`,
+          ),
+        ).map((cb) => Number(cb.value));
+
+        try {
+          await api(`/api/esport/matchs/${matchId}/convoques`, {
+            method: "POST",
+            body: JSON.stringify({ convoques: checked }),
+          });
+          feedback.textContent = "✓ Convocations enregistrées";
+          feedback.className = "text-xs mt-2 text-emerald-400";
+          await loadMatch();
+        } catch (err) {
+          feedback.textContent = err.message;
+          feedback.className = "text-xs mt-2 text-red-400";
+        }
+      }
+
+      function renderMatch() {
+        document.getElementById("match-card").innerHTML = `
+          <p class="text-xs uppercase text-cyan-300 font-semibold">${matchData.jeu}</p>
+          <h1 class="text-2xl font-black mt-1">Match #${matchData.id}</h1>
+          <p class="text-slate-300 mt-2">Format ${matchData.format} • ${matchData.slots_par_equipe} slots par équipe • ${new Date(matchData.date_heure).toLocaleString("fr-FR")}</p>
+          <p class="text-slate-500 text-xs mt-2">Créé par ${matchData.createur}</p>
+          <p class="text-slate-400 text-sm mt-2">Statut: <span class="text-cyan-300">${matchData.statut}</span></p>
+        `;
+
+        const teamsList = document.getElementById("teams-list");
+        teamsList.innerHTML =
+          matchData.teams
+            .map(
+              (t) => `
+                <div class="rounded-xl border border-slate-700 bg-slate-800/50 p-4">
+                  <p class="font-bold text-lg">${t.nom}</p>
+                  <p class="text-slate-400 text-sm mt-1">Niveau moyen: ${window.RankUtils.formatRank("game", t.elo_moyen || 1000)}</p>
+                  <div class="mt-3">
+                    <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                      Joueurs convoqués
+                      <span class="text-slate-600">(${(t.convoques || []).length}/${matchData.slots_par_equipe})</span>
+                    </p>
+                    ${t.convoques && t.convoques.length
+                      ? `<div class="space-y-2">${t.convoques
+                          .map(
+                            (player) => `<div class="text-sm text-slate-300 flex items-center justify-between"><span>${player.pseudo}</span><span class="text-slate-500">${player.niveau}</span></div>`,
+                          )
+                          .join("")}</div>`
+                      : '<p class="text-sm text-slate-500">Aucun joueur convoqué</p>'}
+                  </div>
+                  ${buildConvocationPanel(t)}
+                </div>
+              `,
+            )
+            .join("") ||
+          '<p class="text-slate-500">Aucune équipe inscrite.</p>';
+
+        const btnJoin = document.getElementById("btn-join");
+        btnJoin.classList.toggle("hidden", !matchData.can_join);
+
+        const resultForm = document.getElementById("result-form");
+        resultForm.classList.toggle(
+          "hidden",
+          !(matchData.can_manage && matchData.teams.length === 2),
+        );
+
+        const winnerSelect = document.getElementById("winner-team");
+        winnerSelect.innerHTML = matchData.teams
+          .map((t) => `<option value="${t.id}">${t.nom}</option>`)
+          .join("");
+
+        const resultCard = document.getElementById("result-card");
+        if (matchData.result) {
+          resultCard.classList.remove("hidden");
+          document.getElementById("result-text").textContent =
+            `${matchData.result.equipe_gagnante} ${matchData.result.score_gagnant} - ${matchData.result.score_perdant} ${matchData.result.equipe_perdante}`;
+        } else {
+          resultCard.classList.add("hidden");
+        }
+      }
+
+      async function loadMatch() {
+        matchData = await api(`/api/esport/matchs/${matchId}`);
+        renderMatch();
+      }
+
+      async function joinMatch() {
+        try {
+          await api(`/api/esport/matchs/${matchId}/rejoindre`, {
+            method: "POST",
+          });
+          await loadMatch();
+        } catch (err) {
+          alert(err.message);
+        }
+      }
+
+      async function saveResult() {
+        const feedback = document.getElementById("result-feedback");
+        feedback.textContent = "";
+
+        try {
+          await api(`/api/esport/matchs/${matchId}/resultat`, {
+            method: "POST",
+            body: JSON.stringify({
+              equipe_gagnante_id: Number(
+                document.getElementById("winner-team").value,
+              ),
+              score_gagnant: Number(document.getElementById("score-win").value),
+              score_perdant: Number(
+                document.getElementById("score-lose").value,
+              ),
+            }),
+          });
+          feedback.textContent = "Résultat enregistré.";
+          await loadMatch();
+        } catch (err) {
+          feedback.textContent = err.message;
+        }
+      }
+
+      loadMatch().catch((err) => {
+        document.getElementById("match-card").innerHTML =
+          `<p class="text-red-400">${err.message}</p>`;
+      });
+    </script>
+  </body>
+</html>

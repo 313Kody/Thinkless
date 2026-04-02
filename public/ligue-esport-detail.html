@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Détail Ligue E-sport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/rank-utils.js"></script>
+  </head>
+  <body class="bg-slate-950 min-h-screen text-white">
+    <nav class="bg-slate-900 px-6 py-4 flex justify-between items-center border-b border-cyan-900/40">
+      <a href="/ligues-esport.html" class="text-xl font-bold text-cyan-300">Thinkless E-sport</a>
+      <div class="flex items-center gap-4">
+        <button onclick="goBack('/ligues-esport.html')" class="text-sm text-slate-400 hover:text-white transition">← Retour</button>
+        <button onclick="logout()" class="text-sm text-red-400 hover:text-red-300 transition">Déconnexion</button>
+      </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+      <div class="bg-slate-900 rounded-2xl p-6 border border-slate-800 mb-6">
+        <div class="flex justify-between items-start mb-4 gap-4">
+          <div>
+            <span id="ligue-jeu" class="text-xs text-cyan-300 font-semibold uppercase"></span>
+            <h1 id="ligue-nom" class="text-3xl font-bold mt-2"></h1>
+            <p id="ligue-desc" class="text-slate-400 text-sm mt-2"></p>
+            <p id="ligue-createur" class="text-slate-500 text-xs mt-3"></p>
+          </div>
+          <div id="actions-ligue" class="flex gap-2 flex-col"></div>
+        </div>
+        <div
+          id="private-code-card"
+          class="hidden mt-4 rounded-xl border border-cyan-900/60 bg-cyan-950/30 px-4 py-3"
+        >
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-cyan-300 font-semibold">
+                Code privé de la ligue
+              </p>
+              <p class="text-slate-400 text-sm mt-1">
+                Partage ce code pour permettre à d'autres joueurs de rejoindre la ligue.
+              </p>
+            </div>
+            <button
+              type="button"
+              onclick="copyPrivateCode()"
+              class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 text-sm font-semibold px-4 py-2 rounded-lg transition"
+            >
+              Copier
+            </button>
+          </div>
+          <p id="private-code-value" class="mt-3 font-mono text-lg text-cyan-200 tracking-[0.3em]"></p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center">
+          <p class="text-2xl font-bold text-cyan-400" id="nb-membres">0</p>
+          <p class="text-slate-400 text-sm mt-1">Membres</p>
+        </div>
+        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center">
+          <p class="text-2xl font-bold text-emerald-400" id="nb-matchs">0</p>
+          <p class="text-slate-400 text-sm mt-1">Matchs</p>
+        </div>
+        <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center">
+          <p id="statut-ligue" class="text-sm font-semibold px-3 py-1 rounded-full w-fit mx-auto"></p>
+        </div>
+      </div>
+
+      <div class="flex gap-3 mb-6 border-b border-slate-800">
+        <button id="tab-membres" onclick="switchTab('membres')" class="pb-3 px-4 border-b-2 border-cyan-500 text-white font-semibold transition">Membres</button>
+        <button id="tab-classement" onclick="switchTab('classement')" class="pb-3 px-4 border-b-2 border-transparent text-slate-400 hover:text-white font-semibold transition">🏆 Classement</button>
+        <button id="tab-matchs" onclick="switchTab('matchs')" class="pb-3 px-4 border-b-2 border-transparent text-slate-400 hover:text-white font-semibold transition">Matchs</button>
+      </div>
+
+      <div id="membres-section" class="grid gap-4 mb-8">
+        <p class="text-slate-500">Chargement...</p>
+      </div>
+      <div id="classement-section" class="hidden">
+        <p id="classement-kind" class="text-slate-400 text-sm mb-2"></p>
+        <div class="space-y-2" id="classement-list"></div>
+      </div>
+      <div id="matchs-section" class="hidden grid gap-4">
+        <p class="text-slate-500">Chargement...</p>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!token) window.location.href = "/login.html";
+
+      const ligueId = new URLSearchParams(window.location.search).get("id");
+      if (!ligueId) window.location.href = "/ligues-esport.html";
+
+      let ligueData = null;
+      let isMember = false;
+      let currentTab = "membres";
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      async function copyPrivateCode() {
+        const code = ligueData?.code_acces;
+        if (!code) return;
+        try {
+          await navigator.clipboard.writeText(code);
+          alert("Code copié dans le presse-papiers");
+        } catch {
+          alert(`Code de la ligue: ${code}`);
+        }
+      }
+
+      function goBack(fallback) {
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+        window.location.href = fallback;
+      }
+
+      function switchTab(tab) {
+        if (currentTab === tab) return;
+        document.getElementById(`${currentTab}-section`).classList.add("hidden");
+        document.getElementById(`tab-${currentTab}`).classList.remove("border-cyan-500", "text-white");
+        document.getElementById(`tab-${currentTab}`).classList.add("border-transparent", "text-slate-400");
+        document.getElementById(`${tab}-section`).classList.remove("hidden");
+        document.getElementById(`tab-${tab}`).classList.add("border-cyan-500", "text-white");
+        document.getElementById(`tab-${tab}`).classList.remove("border-transparent", "text-slate-400");
+        currentTab = tab;
+      }
+
+      async function loadLigue() {
+        const res = await fetch(`/api/esport/ligues/${ligueId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          alert("Ligue e-sport introuvable ou erreur de chargement");
+          window.location.href = "/ligues-esport.html";
+          return;
+        }
+        ligueData = await res.json();
+        isMember = ligueData.suis;
+        renderLigue();
+        loadClassement();
+        loadMatchs();
+      }
+
+      function renderLigue() {
+        const l = ligueData;
+        const canCreateMatch = Number(l.createur_id) === Number(user.id);
+        document.getElementById("ligue-jeu").textContent = l.jeu || "Jeu";
+        document.getElementById("ligue-nom").textContent = l.nom;
+        document.getElementById("ligue-desc").textContent = l.description || "Pas de description";
+        document.getElementById("ligue-createur").textContent = `Créé par ${l.createur}`;
+        document.getElementById("nb-membres").textContent = l.membres?.length || 0;
+
+        const codeCard = document.getElementById("private-code-card");
+        if (!l.publique && l.code_acces && isMember) {
+          codeCard.classList.remove("hidden");
+          document.getElementById("private-code-value").textContent = l.code_acces;
+        } else {
+          codeCard.classList.add("hidden");
+          document.getElementById("private-code-value").textContent = "";
+        }
+
+        const statut = document.getElementById("statut-ligue");
+        if (l.publique) {
+          statut.textContent = "🌐 Publique";
+          statut.className = "text-sm font-semibold px-3 py-1 rounded-full w-fit mx-auto bg-emerald-900 text-emerald-300";
+        } else {
+          statut.textContent = "🔒 Privée";
+          statut.className = "text-sm font-semibold px-3 py-1 rounded-full w-fit mx-auto bg-slate-800 text-slate-300";
+        }
+
+        const actions = document.getElementById("actions-ligue");
+        actions.innerHTML = "";
+        if (isMember && canCreateMatch) {
+          const btnCreerMatch = document.createElement("button");
+          btnCreerMatch.onclick = () => {
+            window.location.href = `/index-esport.html?ligue_id=${ligueId}&jeu_id=${l.jeu_id}`;
+          };
+          btnCreerMatch.className = "bg-cyan-600 hover:bg-cyan-500 text-slate-950 text-sm px-4 py-2 rounded-lg transition";
+          btnCreerMatch.textContent = "+ Match";
+          actions.appendChild(btnCreerMatch);
+        }
+        if (isMember) {
+          const btnQuitter = document.createElement("button");
+          btnQuitter.onclick = () => quitterLigue();
+          btnQuitter.className = "bg-red-700 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-lg transition";
+          btnQuitter.textContent = "Quitter";
+          actions.appendChild(btnQuitter);
+        } else {
+          const btnRejoindre = document.createElement("button");
+          btnRejoindre.onclick = () => rejoindreLigue();
+          btnRejoindre.className = "bg-cyan-600 hover:bg-cyan-500 text-slate-950 text-sm px-4 py-2 rounded-lg transition";
+          btnRejoindre.textContent = "Rejoindre";
+          actions.appendChild(btnRejoindre);
+        }
+        renderMembres();
+      }
+
+      function renderMembres() {
+        const membres = ligueData.membres || [];
+        const container = document.getElementById("membres-section");
+        if (!membres.length) {
+          container.innerHTML = '<p class="text-slate-500">Aucun membre pour le moment.</p>';
+          return;
+        }
+        container.innerHTML = membres
+          .map(
+            (m) => `
+          <div class="bg-slate-900 rounded-lg p-4 border border-slate-800 flex items-center justify-between">
+            <div>
+              <p class="font-semibold">${m.pseudo}</p>
+              ${m.elo ? `<p class="text-slate-400 text-sm">${window.RankUtils.getLevelForElo("game", m.elo)}</p>` : ""}
+              <p class="text-slate-500 text-xs mt-1">${m.victoires || 0}V - ${m.defaites || 0}D | ${m.points || 0} pts</p>
+            </div>
+            ${Number(m.id) === Number(ligueData.createur_id) ? '<span class="bg-cyan-950 text-cyan-300 text-xs px-2 py-1 rounded">Créateur</span>' : ""}
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      async function loadClassement() {
+        const res = await fetch(`/api/esport/ligues/${ligueId}/classement`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          document.getElementById("classement-list").innerHTML = '<p class="text-slate-500">Erreur de chargement</p>';
+          return;
+        }
+        const classement = await res.json();
+        const container = document.getElementById("classement-list");
+        const kindLabel = document.getElementById("classement-kind");
+        const isTeamRanking = classement.length > 0 ? classement[0].ranking_type === "equipe" : Boolean(ligueData && Number(ligueData.nb_equipe) > 1);
+        kindLabel.textContent = isTeamRanking ? "Classement des équipes" : "Classement des joueurs";
+        if (!classement.length) {
+          container.innerHTML = '<p class="text-slate-500">Aucune donnée de classement.</p>';
+          return;
+        }
+        container.innerHTML = classement
+          .map(
+            (c) => `
+          <div class="bg-slate-900 rounded-lg p-3 border border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl font-bold text-cyan-400 w-8 text-center">#${c.rang}</span>
+              <div>
+                <p class="font-semibold">${c.pseudo}</p>
+                <p class="text-slate-500 text-xs">${c.victoires || 0}V - ${c.defaites || 0}D</p>
+              </div>
+            </div>
+            <span class="text-xl font-bold text-cyan-300">${c.points || 0} pts</span>
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      async function loadMatchs() {
+        const res = await fetch(`/api/esport/ligues/${ligueId}/matchs`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          document.getElementById("matchs-section").innerHTML = '<p class="text-slate-500">Erreur de chargement</p>';
+          return;
+        }
+        const matchs = await res.json();
+        document.getElementById("nb-matchs").textContent = matchs.length;
+        const container = document.getElementById("matchs-section");
+        if (!matchs.length) {
+          container.innerHTML = '<p class="text-slate-500">Aucun match pour le moment.</p>';
+          return;
+        }
+        container.innerHTML = matchs
+          .map(
+            (m) => `
+          <div class="bg-slate-900 rounded-xl p-5 border border-slate-800 hover:border-cyan-500 transition">
+            <div class="flex justify-between items-start gap-4">
+              <div>
+                <h3 class="text-lg font-bold">Match #${m.id}</h3>
+                <p class="text-slate-400 text-sm">🎮 ${m.jeu}</p>
+                <p class="text-slate-400 text-sm">📅 ${new Date(m.date_heure).toLocaleString("fr-FR")}</p>
+                <p class="text-slate-500 text-xs mt-2">Créé par <span class="text-white">${m.createur}</span></p>
+              </div>
+              <button onclick="window.location.href='/match-esport.html?id=${m.id}'" class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg transition">Voir</button>
+            </div>
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      async function rejoindreLigue() {
+        const res = await fetch(`/api/esport/ligues/${ligueId}/rejoindre`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message);
+          loadLigue();
+        } else {
+          alert(data.message);
+        }
+      }
+
+      async function quitterLigue() {
+        if (!confirm("Quitter cette ligue ?")) return;
+        const res = await fetch(`/api/esport/ligues/${ligueId}/quitter`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message);
+          loadLigue();
+        } else {
+          alert(data.message);
+        }
+      }
+
+      loadLigue();
+    </script>
+  </body>
+</html>

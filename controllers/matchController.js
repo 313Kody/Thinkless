@@ -1,5 +1,61 @@
 const { getPool } = require("../config/db");
 
+async function getMatchAuthorizationContext(connection, matchId) {
+  const [rows] = await connection.execute(
+    `SELECT ms.*, l.createur_id AS ligue_createur_id
+     FROM MatchSport ms
+     LEFT JOIN Ligue l ON l.id = ms.ligue_id
+     WHERE ms.id = ?`,
+    [matchId],
+  );
+
+  return rows[0] || null;
+}
+
+function canManageMatch(match, userId) {
+  if (!match) {
+    return false;
+  }
+
+  return match.createur_id === userId || match.ligue_createur_id === userId;
+}
+
+async function isLeagueMember(connection, ligueId, userId) {
+  if (!ligueId) {
+    return false;
+  }
+
+  const [rows] = await connection.execute(
+    `SELECT 1
+     FROM LigueUtilisateur
+     WHERE ligue_id = ? AND utilisateur_id = ?
+     LIMIT 1`,
+    [ligueId, userId],
+  );
+
+  return rows.length > 0;
+}
+
+async function canJoinMatch(connection, match, userId) {
+  if (!match || match.statut !== "ouvert") {
+    return false;
+  }
+
+  if (canManageMatch(match, userId)) {
+    return true;
+  }
+
+  if (match.prive) {
+    return false;
+  }
+
+  if (!match.ligue_id) {
+    return true;
+  }
+
+  return isLeagueMember(connection, match.ligue_id, userId);
+}
+
 function pickParticipantByTeam(participants, team) {
   return (
     participants.find((participant) => participant.equipe === team) || null
@@ -147,6 +203,24 @@ exports.createMatch = async (req, res) => {
         return res.status(400).json({ message: "ligue_id invalide" });
       }
 
+      const [ligueRows] = await db.execute(
+        `SELECT createur_id
+         FROM Ligue
+         WHERE id = ?
+         LIMIT 1`,
+        [finalLigueId],
+      );
+
+      if (ligueRows.length === 0) {
+        return res.status(404).json({ message: "Ligue introuvable" });
+      }
+
+      if (Number(ligueRows[0].createur_id) !== Number(req.user.id)) {
+        return res.status(403).json({
+          message: "Seul le createur de la ligue peut ajouter un match",
+        });
+      }
+
       const [membershipRows] = await db.execute(
         `SELECT 1
          FROM LigueUtilisateur
@@ -235,13 +309,25 @@ exports.rejoindreMatch = async (req, res) => {
     const db = getPool();
     const matchId = req.params.id;
 
-    const [rows] = await db.execute("SELECT * FROM MatchSport WHERE id = ?", [
-      matchId,
-    ]);
-    if (rows.length === 0)
-      return res.status(404).json({ message: "Match introuvable" });
-    if (rows[0].statut !== "ouvert")
+    const match = await getMatchAuthorizationContext(db, matchId);
+    if (!match) return res.status(404).json({ message: "Match introuvable" });
+    if (match.statut !== "ouvert")
       return res.status(400).json({ message: "Match non disponible" });
+
+    if (match.ligue_id) {
+      const member = await isLeagueMember(db, match.ligue_id, req.user.id);
+      if (!member) {
+        return res
+          .status(403)
+          .json({ message: "Tu dois avoir rejoint la ligue pour participer" });
+      }
+    }
+
+    if (match.prive && !canManageMatch(match, req.user.id)) {
+      return res
+        .status(403)
+        .json({ message: "Utilise le code d'acces pour rejoindre ce match" });
+    }
 
     await db.execute(
       "INSERT INTO ParticipationMatch (match_id, utilisateur_id) VALUES (?, ?)",
@@ -274,6 +360,15 @@ exports.rejoindreAvecCode = async (req, res) => {
 
     const match = rows[0];
 
+    if (match.ligue_id) {
+      const member = await isLeagueMember(db, match.ligue_id, req.user.id);
+      if (!member) {
+        return res
+          .status(403)
+          .json({ message: "Tu dois avoir rejoint la ligue pour participer" });
+      }
+    }
+
     await db.execute(
       "INSERT INTO ParticipationMatch (match_id, utilisateur_id) VALUES (?, ?)",
       [match.id, req.user.id],
@@ -292,10 +387,12 @@ exports.getMatch = async (req, res) => {
   try {
     const db = getPool();
     const [rows] = await db.execute(
-      `SELECT ms.*, s.nom AS sport, u.pseudo AS createur
+      `SELECT ms.*, s.nom AS sport, u.pseudo AS createur,
+              l.createur_id AS ligue_createur_id
        FROM MatchSport ms
        JOIN Sport s       ON s.id = ms.sport_id
        JOIN Utilisateur u ON u.id = ms.createur_id
+       LEFT JOIN Ligue l  ON l.id = ms.ligue_id
        WHERE ms.id = ?`,
       [req.params.id],
     );
@@ -310,7 +407,14 @@ exports.getMatch = async (req, res) => {
       [req.params.id],
     );
 
-    res.json({ ...rows[0], participants });
+    const match = rows[0];
+    const canJoin = await canJoinMatch(db, match, req.user.id);
+    res.json({
+      ...match,
+      can_manage: canManageMatch(match, req.user.id),
+      can_join: canJoin,
+      participants,
+    });
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
@@ -320,13 +424,9 @@ exports.getMatch = async (req, res) => {
 exports.updateMatch = async (req, res) => {
   try {
     const db = getPool();
-    const [rows] = await db.execute(
-      "SELECT createur_id FROM MatchSport WHERE id = ?",
-      [req.params.id],
-    );
-    if (rows.length === 0)
-      return res.status(404).json({ message: "Match introuvable" });
-    if (rows[0].createur_id !== req.user.id)
+    const match = await getMatchAuthorizationContext(db, req.params.id);
+    if (!match) return res.status(404).json({ message: "Match introuvable" });
+    if (!canManageMatch(match, req.user.id))
       return res.status(403).json({ message: "Interdit" });
 
     const {
@@ -366,13 +466,9 @@ exports.updateMatch = async (req, res) => {
 exports.deleteMatch = async (req, res) => {
   try {
     const db = getPool();
-    const [rows] = await db.execute(
-      "SELECT createur_id FROM MatchSport WHERE id = ?",
-      [req.params.id],
-    );
-    if (rows.length === 0)
-      return res.status(404).json({ message: "Match introuvable" });
-    if (rows[0].createur_id !== req.user.id)
+    const match = await getMatchAuthorizationContext(db, req.params.id);
+    if (!match) return res.status(404).json({ message: "Match introuvable" });
+    if (!canManageMatch(match, req.user.id))
       return res.status(403).json({ message: "Interdit" });
 
     await db.execute("UPDATE MatchSport SET statut='annule' WHERE id=?", [
@@ -389,11 +485,56 @@ exports.choisirEquipe = async (req, res) => {
   try {
     const db = getPool();
     const { equipe } = req.body;
-    await db.execute(
-      `UPDATE ParticipationMatch SET equipe=?, statut='en_attente' WHERE match_id=? AND utilisateur_id=?`,
-      [equipe, req.params.id, req.user.id],
+
+    if (!["A", "B"].includes(equipe)) {
+      return res.status(400).json({ message: "Equipe invalide" });
+    }
+
+    const match = await getMatchAuthorizationContext(db, req.params.id);
+    if (!match) return res.status(404).json({ message: "Match introuvable" });
+
+    if (match.statut !== "ouvert") {
+      return res.status(400).json({ message: "Match non disponible" });
+    }
+
+    const canJoin = await canJoinMatch(db, match, req.user.id);
+    if (!canJoin) {
+      return res.status(403).json({ message: "Interdit" });
+    }
+
+    const [participantRows] = await db.execute(
+      `SELECT 1
+       FROM ParticipationMatch
+       WHERE match_id = ? AND utilisateur_id = ?
+       LIMIT 1`,
+      [req.params.id, req.user.id],
     );
-    res.json({ message: `Demande envoyée pour l'équipe ${equipe}` });
+
+    const targetStatus = canManageMatch(match, req.user.id)
+      ? "valide"
+      : "en_attente";
+
+    if (participantRows.length === 0) {
+      await db.execute(
+        `INSERT INTO ParticipationMatch (match_id, utilisateur_id, equipe, statut)
+         VALUES (?, ?, ?, ?)`,
+        [req.params.id, req.user.id, equipe, targetStatus],
+      );
+    } else {
+      await db.execute(
+        `UPDATE ParticipationMatch
+         SET equipe = ?, statut = ?
+         WHERE match_id = ? AND utilisateur_id = ?`,
+        [equipe, targetStatus, req.params.id, req.user.id],
+      );
+    }
+
+    const sideLabel = equipe === "A" ? match.nom_equipe_a : match.nom_equipe_b;
+    const message = canManageMatch(match, req.user.id)
+      ? `Placement direct dans ${sideLabel}`
+      : `Demande envoyee pour ${sideLabel}`;
+
+    res.json({ message });
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
@@ -403,6 +544,11 @@ exports.choisirEquipe = async (req, res) => {
 exports.validerJoueur = async (req, res) => {
   try {
     const db = getPool();
+    const match = await getMatchAuthorizationContext(db, req.params.id);
+    if (!match) return res.status(404).json({ message: "Match introuvable" });
+    if (!canManageMatch(match, req.user.id))
+      return res.status(403).json({ message: "Interdit" });
+
     const { utilisateur_id, equipe } = req.body;
     await db.execute(
       `UPDATE ParticipationMatch SET equipe=?, statut='valide' WHERE match_id=? AND utilisateur_id=?`,
@@ -418,6 +564,11 @@ exports.validerJoueur = async (req, res) => {
 exports.retirerEquipe = async (req, res) => {
   try {
     const db = getPool();
+    const match = await getMatchAuthorizationContext(db, req.params.id);
+    if (!match) return res.status(404).json({ message: "Match introuvable" });
+    if (!canManageMatch(match, req.user.id))
+      return res.status(403).json({ message: "Interdit" });
+
     const { utilisateur_id } = req.body;
     await db.execute(
       `UPDATE ParticipationMatch SET equipe=NULL, statut='en_attente' WHERE match_id=? AND utilisateur_id=?`,
@@ -433,6 +584,11 @@ exports.retirerEquipe = async (req, res) => {
 exports.retirerJoueur = async (req, res) => {
   try {
     const db = getPool();
+    const match = await getMatchAuthorizationContext(db, req.params.id);
+    if (!match) return res.status(404).json({ message: "Match introuvable" });
+    if (!canManageMatch(match, req.user.id))
+      return res.status(403).json({ message: "Interdit" });
+
     const { utilisateur_id } = req.body;
     await db.execute(
       `DELETE FROM ParticipationMatch WHERE match_id=? AND utilisateur_id=?`,

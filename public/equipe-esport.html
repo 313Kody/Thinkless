@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless - Equipes E-sport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/rank-utils.js"></script>
+  </head>
+  <body class="bg-slate-950 min-h-screen text-white">
+    <nav
+      class="bg-slate-900 px-6 py-4 flex justify-between items-center border-b border-cyan-900/40"
+    >
+      <a href="/index-esport.html" class="text-xl font-bold text-cyan-300"
+        >Thinkless E-sport</a
+      >
+      <div class="flex items-center gap-4">
+        <a
+          href="/index-esport.html"
+          class="text-slate-300 hover:text-white text-sm transition"
+          >Accueil E-sport</a
+        >
+        <a
+          href="/ligues-esport.html"
+          class="text-slate-300 hover:text-white text-sm transition"
+          >Ligues E-sport</a
+        >
+        <a
+          href="/profil.html"
+          class="text-slate-300 hover:text-white text-sm transition"
+          >Mon profil</a
+        >
+        <button
+          onclick="goBack('/index-esport.html')"
+          class="text-slate-400 hover:text-white text-sm transition"
+        >
+          ← Retour
+        </button>
+        <button
+          onclick="logout()"
+          class="text-sm text-red-400 hover:text-red-300 transition"
+        >
+          Deconnexion
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+      <section class="bg-slate-900 rounded-2xl p-6 border border-slate-800">
+        <h1 class="text-2xl font-bold mb-2">Equipes E-sport</h1>
+        <p id="team-page-subtitle" class="text-slate-400 text-sm">
+          Trouve une equipe ou cree la tienne.
+        </p>
+      </section>
+
+      <section
+        id="create-section"
+        class="bg-slate-900 rounded-2xl p-6 border border-slate-800"
+      >
+        <h2 class="text-lg font-bold mb-4">Creer une equipe</h2>
+        <div class="grid md:grid-cols-[1fr_auto] gap-3">
+          <input
+            id="input-team-name"
+            type="text"
+            placeholder="Nom de l'equipe"
+            class="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-cyan-500"
+          />
+          <button
+            onclick="createTeam()"
+            class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 text-sm font-semibold px-4 py-2 rounded-lg transition"
+          >
+            + Creer
+          </button>
+        </div>
+        <div class="mt-3 flex flex-col md:flex-row md:items-center gap-3">
+          <input
+            id="input-team-logo-file"
+            type="file"
+            accept="image/*"
+            class="text-sm text-slate-300"
+          />
+          <button
+            onclick="uploadLogoFromPc()"
+            class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg transition"
+          >
+            Uploader depuis mon PC
+          </button>
+          <span id="upload-status" class="text-xs text-slate-400"></span>
+        </div>
+        <p id="create-error" class="text-red-400 text-sm mt-3 hidden"></p>
+      </section>
+
+      <section
+        id="requests-section"
+        class="bg-slate-900 rounded-2xl p-6 border border-slate-800 hidden"
+      >
+        <h2 class="text-lg font-bold mb-4">Demandes a traiter</h2>
+        <div id="requests-list" class="space-y-3"></div>
+      </section>
+
+      <section
+        id="search-section"
+        class="bg-slate-900 rounded-2xl p-6 border border-slate-800"
+      >
+        <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+          <input
+            id="search-name"
+            type="text"
+            placeholder="Rechercher une equipe..."
+            class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-cyan-500"
+          />
+          <button
+            onclick="loadTeams()"
+            class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 text-sm font-semibold px-4 py-2 rounded-lg transition"
+          >
+            Rechercher
+          </button>
+          <button
+            onclick="resetSearch()"
+            class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg transition"
+          >
+            Reinitialiser
+          </button>
+        </div>
+        <div id="teams-list" class="grid gap-4">
+          <p class="text-slate-500">Chargement...</p>
+        </div>
+      </section>
+
+      <section
+        id="lobby-section"
+        class="bg-slate-900 rounded-2xl p-6 border border-slate-800 hidden"
+      >
+        <div class="flex items-center gap-4 mb-6">
+          <img
+            id="lobby-logo"
+            src=""
+            alt="Logo equipe"
+            class="w-16 h-16 rounded-xl object-cover border border-slate-700 hidden"
+          />
+          <div>
+            <h2 id="lobby-team-name" class="text-xl font-bold"></h2>
+            <p id="lobby-captain" class="text-sm text-slate-400"></p>
+          </div>
+        </div>
+
+        <div class="space-y-8">
+          <section>
+            <h3 class="text-lg font-semibold mb-3">Niveaux Sports</h3>
+            <div id="lobby-sports-members" class="grid gap-4"></div>
+          </section>
+
+          <section>
+            <h3 class="text-lg font-semibold mb-3">Niveaux E-sport</h3>
+            <div id="lobby-esports-members" class="grid gap-4"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const API_BASE = "/api/equipes-esport";
+      let uploadedLogoUrl = "";
+      if (!token) window.location.href = "/login.html";
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/accueil.html";
+      }
+
+      function goBack(fallback) {
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+        window.location.href = fallback;
+      }
+
+      async function api(path, options = {}) {
+        return fetch(path, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+          },
+        });
+      }
+
+      async function parseApiResponse(res) {
+        const text = await res.text();
+        if (!text) return {};
+        try {
+          return JSON.parse(text);
+        } catch {
+          return { message: text };
+        }
+      }
+
+      function resetSearch() {
+        document.getElementById("search-name").value = "";
+        loadTeams();
+      }
+
+      function setDiscoveryVisibility(visible) {
+        document
+          .getElementById("create-section")
+          .classList.toggle("hidden", !visible);
+        document
+          .getElementById("search-section")
+          .classList.toggle("hidden", !visible);
+      }
+
+      function renderMemberLevelCard(member, type) {
+        const levels = type === "sport" ? member.sports : member.esports;
+        const roleBadge =
+          member.role === "capitaine"
+            ? '<span class="text-xs px-2 py-1 rounded bg-cyan-900 text-cyan-300">Capitaine</span>'
+            : '<span class="text-xs px-2 py-1 rounded bg-slate-800 text-slate-300">Joueur</span>';
+
+        const levelList = levels.length
+          ? levels
+              .map((l) => {
+                const label = type === "sport" ? l.sport : l.jeu;
+                const rankLabel = window.RankUtils.getLevelForElo(
+                  type === "sport" ? "sport" : "game",
+                  l.elo,
+                );
+                return `<li class="flex justify-between text-sm"><span class="text-slate-300">${label}</span><span class="text-slate-400">${rankLabel} (${l.victoires}V/${l.defaites}D)</span></li>`;
+              })
+              .join("")
+          : '<li class="text-sm text-slate-500">Aucun niveau enregistre</li>';
+
+        return `
+          <article class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <p class="font-semibold">${member.pseudo}</p>
+                <p class="text-xs text-slate-500">${member.localisation || "Localisation non renseignee"}</p>
+              </div>
+              ${roleBadge}
+            </div>
+            <ul class="space-y-2">${levelList}</ul>
+          </article>
+        `;
+      }
+
+      async function loadLobbyIfMember() {
+        const subtitle = document.getElementById("team-page-subtitle");
+        const requestsSection = document.getElementById("requests-section");
+        const res = await api(`${API_BASE}/mon-equipe`);
+        if (res.status === 404) {
+          subtitle.textContent = "Trouve une equipe ou cree la tienne.";
+          document.getElementById("lobby-section").classList.add("hidden");
+          setDiscoveryVisibility(true);
+          await loadTeams();
+          await loadRequests();
+          return;
+        }
+
+        const data = await res.json();
+        if (!res.ok) {
+          subtitle.textContent = "Erreur lors du chargement de l'equipe.";
+          setDiscoveryVisibility(true);
+          await loadTeams();
+          await loadRequests();
+          return;
+        }
+
+        subtitle.textContent = "Lobby de ton equipe";
+        setDiscoveryVisibility(false);
+        document.getElementById("lobby-section").classList.remove("hidden");
+
+        const isCaptain =
+          Number(data.equipe.capitaine_id) === Number(currentUser.id);
+        if (isCaptain) {
+          await loadRequests();
+        } else {
+          requestsSection.classList.add("hidden");
+        }
+
+        document.getElementById("lobby-team-name").textContent =
+          data.equipe.nom;
+        document.getElementById("lobby-captain").textContent =
+          `Capitaine: ${data.equipe.capitaine}`;
+
+        const logo = document.getElementById("lobby-logo");
+        if (data.equipe.logo_url) {
+          logo.src = data.equipe.logo_url;
+          logo.classList.remove("hidden");
+        } else {
+          logo.src = "";
+          logo.classList.add("hidden");
+        }
+
+        const members = Array.isArray(data.membres) ? data.membres : [];
+        const sportContainer = document.getElementById("lobby-sports-members");
+        const esportContainer = document.getElementById(
+          "lobby-esports-members",
+        );
+
+        sportContainer.innerHTML = members.length
+          ? members.map((m) => renderMemberLevelCard(m, "sport")).join("")
+          : '<p class="text-slate-500">Aucun membre.</p>';
+
+        esportContainer.innerHTML = members.length
+          ? members.map((m) => renderMemberLevelCard(m, "esport")).join("")
+          : '<p class="text-slate-500">Aucun membre.</p>';
+      }
+
+      function renderTeamAction(team, myTeamId) {
+        if (team.is_my_team) {
+          return '<span class="text-xs px-3 py-1 rounded-full bg-green-900 text-green-300">Mon equipe</span>';
+        }
+
+        if (team.is_captain) {
+          return '<span class="text-xs px-3 py-1 rounded-full bg-cyan-900 text-cyan-300">Createur</span>';
+        }
+
+        if (team.demande_statut === "en_attente") {
+          return '<span class="text-xs px-3 py-1 rounded-full bg-yellow-900 text-yellow-300">Demande en attente</span>';
+        }
+
+        if (team.demande_statut === "refusee") {
+          return '<span class="text-xs px-3 py-1 rounded-full bg-red-900 text-red-300">Refusee (non renouvelable)</span>';
+        }
+
+        if (myTeamId) {
+          return '<span class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300">Deja dans une equipe</span>';
+        }
+
+        if (team.can_request) {
+          return `<button onclick="requestJoin(${team.id})" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 text-sm font-semibold px-4 py-2 rounded-lg transition">Demander a rejoindre</button>`;
+        }
+
+        return '<span class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-400">Indisponible</span>';
+      }
+
+      async function loadTeams() {
+        const q = document.getElementById("search-name").value.trim();
+        const endpoint = q
+          ? `${API_BASE}?nom=${encodeURIComponent(q)}`
+          : API_BASE;
+
+        const res = await api(endpoint);
+        const data = await res.json();
+
+        const container = document.getElementById("teams-list");
+        const teams = Array.isArray(data.equipes) ? data.equipes : [];
+
+        if (teams.length === 0) {
+          container.innerHTML =
+            '<p class="text-slate-500">Aucune equipe trouvee.</p>';
+          return;
+        }
+
+        container.innerHTML = teams
+          .map(
+            (team) => `
+          <article class="bg-slate-800 rounded-xl p-4 border border-slate-700 flex justify-between items-start gap-4">
+            <div>
+              <h3 class="text-lg font-bold">${team.nom}</h3>
+              <p class="text-slate-400 text-sm mt-1">Createur: ${team.capitaine}</p>
+              <p class="text-slate-500 text-xs mt-2">${team.nb_membres} membre(s)</p>
+            </div>
+            <div class="flex items-center gap-2">
+              ${renderTeamAction(team, data.my_team_id)}
+            </div>
+          </article>
+        `,
+          )
+          .join("");
+      }
+
+      async function loadRequests() {
+        const res = await api(`${API_BASE}/demandes/recues`);
+        const data = await res.json();
+
+        const section = document.getElementById("requests-section");
+        const container = document.getElementById("requests-list");
+
+        if (!Array.isArray(data) || data.length === 0) {
+          section.classList.add("hidden");
+          return;
+        }
+
+        section.classList.remove("hidden");
+        container.innerHTML = data
+          .map(
+            (d) => `
+          <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 flex justify-between items-center gap-4">
+            <div>
+              <p class="font-semibold">${d.demandeur_pseudo}</p>
+              <p class="text-sm text-slate-400">Equipe: ${d.equipe_nom}</p>
+              <p class="text-xs text-slate-500">${d.demandeur_localisation || "Localisation non renseignee"}</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="acceptRequest(${d.id})" class="bg-green-700 hover:bg-green-600 text-white text-sm px-3 py-2 rounded-lg transition">Accepter</button>
+              <button onclick="rejectRequest(${d.id})" class="bg-red-700 hover:bg-red-600 text-white text-sm px-3 py-2 rounded-lg transition">Refuser</button>
+            </div>
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      async function createTeam() {
+        const error = document.getElementById("create-error");
+        error.classList.add("hidden");
+
+        const nom = document.getElementById("input-team-name").value.trim();
+        const logo_url = uploadedLogoUrl || null;
+        try {
+          const res = await api(API_BASE, {
+            method: "POST",
+            body: JSON.stringify({ nom, logo_url }),
+          });
+          const data = await parseApiResponse(res);
+
+          if (!res.ok) {
+            error.textContent = data.error
+              ? `${data.message || "Erreur lors de la creation"} (${data.error})`
+              : data.message || "Erreur lors de la creation";
+            error.classList.remove("hidden");
+            return;
+          }
+
+          document.getElementById("input-team-name").value = "";
+          document.getElementById("input-team-logo-file").value = "";
+          document.getElementById("upload-status").textContent = "";
+          uploadedLogoUrl = "";
+          await loadTeams();
+          await loadRequests();
+        } catch (_e) {
+          error.textContent =
+            "Erreur reseau: impossible de contacter le serveur";
+          error.classList.remove("hidden");
+        }
+      }
+
+      async function uploadLogoFromPc() {
+        const status = document.getElementById("upload-status");
+        const error = document.getElementById("create-error");
+        error.classList.add("hidden");
+        status.textContent = "";
+
+        const fileInput = document.getElementById("input-team-logo-file");
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) {
+          status.textContent = "Selectionne une image avant l'upload";
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("logo", file);
+
+        try {
+          const res = await fetch(`${API_BASE}/logo`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+
+          const data = await parseApiResponse(res);
+          if (!res.ok) {
+            error.textContent = data.message || "Upload impossible";
+            error.classList.remove("hidden");
+            return;
+          }
+
+          uploadedLogoUrl = data.logo_url || "";
+          status.textContent =
+            "Logo upload reussi. Tu peux maintenant cliquer sur Creer.";
+        } catch (_e) {
+          error.textContent = "Erreur reseau pendant l'upload";
+          error.classList.remove("hidden");
+        }
+      }
+
+      async function requestJoin(teamId) {
+        const res = await api(`${API_BASE}/${teamId}/demande`, {
+          method: "POST",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Impossible d'envoyer la demande");
+          return;
+        }
+        alert(data.message);
+        await loadTeams();
+      }
+
+      async function acceptRequest(requestId) {
+        const res = await api(`${API_BASE}/demandes/${requestId}/accepter`, {
+          method: "POST",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Impossible d'accepter");
+          return;
+        }
+        await loadRequests();
+        await loadTeams();
+      }
+
+      async function rejectRequest(requestId) {
+        const ok = confirm("Etes-vous sur de refuser la demande ?");
+        if (!ok) return;
+
+        const res = await api(`${API_BASE}/demandes/${requestId}/refuser`, {
+          method: "POST",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Impossible de refuser");
+          return;
+        }
+        await loadRequests();
+        await loadTeams();
+      }
+
+      loadLobbyIfMember();
+    </script>
+  </body>
+</html>

@@ -1,5 +1,6 @@
 const { getPool } = require("../config/db");
 const bcrypt = require("bcryptjs");
+const { getEloForLevel } = require("../utils/rankUtils");
 
 exports.getProfil = async (req, res) => {
   try {
@@ -127,20 +128,49 @@ exports.updatePassword = async (req, res) => {
 
 exports.addSport = async (req, res) => {
   try {
-    const { sport_id } = req.body;
+    const { sport_id, niveau } = req.body;
     if (!sport_id) {
       return res.status(400).json({ message: "sport_id requis" });
     }
     const db = getPool();
     await db.execute(
-      "INSERT INTO UtilisateurSport (utilisateur_id, sport_id) VALUES (?, ?)",
-      [req.user.id, sport_id],
+      "INSERT INTO UtilisateurSport (utilisateur_id, sport_id, elo) VALUES (?, ?, ?)",
+      [req.user.id, sport_id, getEloForLevel("sport", niveau)],
     );
-    res.status(201).json({ message: "Sport ajouté" });
+    res.status(201).json({
+      message: "Sport ajouté",
+      elo: getEloForLevel("sport", niveau),
+    });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
       return res.status(409).json({ message: "Sport déjà ajouté" });
     }
+    res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+exports.updateSportLevel = async (req, res) => {
+  try {
+    const { niveau } = req.body;
+    if (!niveau) {
+      return res.status(400).json({ message: "niveau requis" });
+    }
+
+    const elo = getEloForLevel("sport", niveau);
+    const db = getPool();
+    const [result] = await db.execute(
+      `UPDATE UtilisateurSport
+       SET elo = ?
+       WHERE utilisateur_id = ? AND sport_id = ?`,
+      [elo, req.user.id, req.params.sportId],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Sport introuvable" });
+    }
+
+    res.json({ message: "Niveau sport mis à jour", elo });
+  } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
 };
@@ -160,20 +190,49 @@ exports.removeSport = async (req, res) => {
 
 exports.addJeu = async (req, res) => {
   try {
-    const { jeu_id } = req.body;
+    const { jeu_id, niveau } = req.body;
     if (!jeu_id) {
       return res.status(400).json({ message: "jeu_id requis" });
     }
     const db = getPool();
     await db.execute(
-      "INSERT INTO UtilisateurJeu (utilisateur_id, jeu_id) VALUES (?, ?)",
-      [req.user.id, jeu_id],
+      "INSERT INTO UtilisateurJeu (utilisateur_id, jeu_id, elo) VALUES (?, ?, ?)",
+      [req.user.id, jeu_id, getEloForLevel("game", niveau)],
     );
-    res.status(201).json({ message: "Jeu ajouté" });
+    res.status(201).json({
+      message: "Jeu ajouté",
+      elo: getEloForLevel("game", niveau),
+    });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
       return res.status(409).json({ message: "Jeu déjà ajouté" });
     }
+    res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+exports.updateJeuLevel = async (req, res) => {
+  try {
+    const { niveau } = req.body;
+    if (!niveau) {
+      return res.status(400).json({ message: "niveau requis" });
+    }
+
+    const elo = getEloForLevel("game", niveau);
+    const db = getPool();
+    const [result] = await db.execute(
+      `UPDATE UtilisateurJeu
+       SET elo = ?
+       WHERE utilisateur_id = ? AND jeu_id = ?`,
+      [elo, req.user.id, req.params.jeuId],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Jeu introuvable" });
+    }
+
+    res.json({ message: "Niveau jeu mis à jour", elo });
+  } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
 };

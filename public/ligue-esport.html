@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless Ligue E-sport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/rank-utils.js"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-white">
+    <nav
+      class="bg-slate-900 border-b border-cyan-900/40 px-6 py-4 flex items-center justify-between"
+    >
+      <a href="/index-esport.html" class="text-xl font-bold text-cyan-300"
+        >Thinkless E-sport</a
+      >
+      <div class="flex items-center gap-4">
+        <a
+          href="/ligues-esport.html"
+          class="text-slate-300 hover:text-white text-sm transition"
+          >Ligues E-sport</a
+        >
+        <a
+          href="/equipe-esport.html"
+          class="text-slate-300 hover:text-white text-sm transition"
+          >Equipes</a
+        >
+        <button
+          onclick="goBack('/index-esport.html')"
+          class="text-slate-400 hover:text-white text-sm transition"
+        >
+          ← Retour
+        </button>
+        <button
+          onclick="logout()"
+          class="text-red-400 hover:text-red-300 text-sm transition"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+      <section
+        class="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-6"
+      >
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
+          <h1 class="text-2xl font-black">Classements E-sport</h1>
+          <select
+            id="jeu-select"
+            class="md:ml-auto bg-slate-800 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+          ></select>
+        </div>
+        <p id="jeu-subtitle" class="text-slate-400 text-sm mt-2"></p>
+      </section>
+
+      <section class="grid lg:grid-cols-2 gap-6 mb-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <h2 class="text-lg font-bold mb-3">Top joueurs</h2>
+          <div id="joueurs-list" class="space-y-2">
+            <p class="text-slate-500">Chargement...</p>
+          </div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <h2 class="text-lg font-bold mb-3">Top équipes</h2>
+          <div id="equipes-list" class="space-y-2">
+            <p class="text-slate-500">Chargement...</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <h2 class="text-lg font-bold mb-3">Matchs récents</h2>
+        <div id="matchs-list" class="space-y-2"></div>
+      </section>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+
+      let jeux = [];
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/accueil.html";
+      }
+
+      async function api(path, options = {}) {
+        const res = await fetch(path, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+          },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Erreur serveur");
+        return data;
+      }
+
+      function goBack(fallback) {
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+        window.location.href = fallback;
+      }
+
+      async function loadJeux() {
+        jeux = await api("/api/esport/jeux");
+        const select = document.getElementById("jeu-select");
+        select.innerHTML = jeux
+          .map((j) => `<option value="${j.id}">${j.nom}</option>`)
+          .join("");
+        select.onchange = () => loadLigue(Number(select.value));
+      }
+
+      function renderList(containerId, rows, rowRender, emptyText) {
+        const container = document.getElementById(containerId);
+        if (!rows.length) {
+          container.innerHTML = `<p class="text-slate-500">${emptyText}</p>`;
+          return;
+        }
+        container.innerHTML = rows.map(rowRender).join("");
+      }
+
+      async function loadLigue(jeuId) {
+        const data = await api(`/api/esport/ligues/classement/${jeuId}`);
+
+        document.getElementById("jeu-subtitle").textContent =
+          `Jeu sélectionné: ${data.jeu.nom}`;
+
+        renderList(
+          "joueurs-list",
+          data.classement_joueurs,
+          (j) => `
+            <div class="border border-slate-700 rounded-lg px-3 py-2 flex items-center justify-between">
+              <div>
+                <p class="font-semibold">#${j.rang} ${j.pseudo}</p>
+                <p class="text-slate-400 text-xs">${j.victoires}V - ${j.defaites}D</p>
+              </div>
+              <span class="text-cyan-300 font-bold">${window.RankUtils.getLevelForElo("game", j.elo)}</span>
+            </div>
+          `,
+          "Aucun joueur classé.",
+        );
+
+        renderList(
+          "equipes-list",
+          data.classement_equipes,
+          (e) => `
+            <div class="border border-slate-700 rounded-lg px-3 py-2 flex items-center justify-between">
+              <div>
+                <p class="font-semibold">#${e.rang} ${e.nom}</p>
+                <p class="text-slate-400 text-xs">${e.nb_joueurs} joueurs</p>
+              </div>
+              <span class="text-cyan-300 font-bold">${window.RankUtils.formatRank("game", e.elo_moyen)}</span>
+            </div>
+          `,
+          "Aucune équipe classée.",
+        );
+
+        renderList(
+          "matchs-list",
+          data.matchs_recents,
+          (m) => `
+            <button onclick="window.location.href='/match-esport.html?id=${m.id}'" class="w-full text-left border border-slate-700 hover:border-cyan-600 rounded-lg px-3 py-3 transition">
+              <p class="font-semibold">${m.affichage_equipes || "En attente d'équipes"}</p>
+              <p class="text-slate-400 text-xs mt-1">${new Date(m.date_heure).toLocaleString("fr-FR")} • ${m.format} • ${m.statut}</p>
+            </button>
+          `,
+          "Aucun match pour ce jeu.",
+        );
+      }
+
+      (async function init() {
+        try {
+          await loadJeux();
+          const initial =
+            Number(new URLSearchParams(window.location.search).get("jeu_id")) ||
+            Number(jeux[0]?.id);
+          if (initial) {
+            document.getElementById("jeu-select").value = String(initial);
+            await loadLigue(initial);
+          }
+        } catch (err) {
+          document.getElementById("joueurs-list").innerHTML =
+            `<p class="text-red-400">${err.message}</p>`;
+          document.getElementById("equipes-list").innerHTML =
+            `<p class="text-red-400">${err.message}</p>`;
+          document.getElementById("matchs-list").innerHTML =
+            `<p class="text-red-400">${err.message}</p>`;
+        }
+      })();
+    </script>
+  </body>
+</html>
