@@ -1,5 +1,86 @@
 const { getPool } = require("../config/db");
 
+function pickParticipantByTeam(participants, team) {
+  return (
+    participants.find((participant) => participant.equipe === team) || null
+  );
+}
+
+async function applyLeagueStandingUpdate(
+  connection,
+  match,
+  winnerTeam,
+  loserTeam,
+) {
+  if (!match.ligue_id) {
+    return;
+  }
+
+  const [ligueEquipes] = await connection.execute(
+    `SELECT id, nom
+     FROM LigueEquipe
+     WHERE ligue_id = ? AND nom IN (?, ?)`,
+    [match.ligue_id, match.nom_equipe_a, match.nom_equipe_b],
+  );
+
+  const equipeA = ligueEquipes.find((item) => item.nom === match.nom_equipe_a);
+  const equipeB = ligueEquipes.find((item) => item.nom === match.nom_equipe_b);
+
+  if (equipeA && equipeB) {
+    const winningTeamId = winnerTeam === "A" ? equipeA.id : equipeB.id;
+    const losingTeamId = loserTeam === "A" ? equipeA.id : equipeB.id;
+
+    await connection.execute(
+      `UPDATE LigueUtilisateur
+       SET points = points + 3,
+           victoires = victoires + 1
+       WHERE ligue_id = ? AND equipe_id = ?`,
+      [match.ligue_id, winningTeamId],
+    );
+
+    await connection.execute(
+      `UPDATE LigueUtilisateur
+       SET defaites = defaites + 1
+       WHERE ligue_id = ? AND equipe_id = ?`,
+      [match.ligue_id, losingTeamId],
+    );
+
+    return;
+  }
+
+  const [participants] = await connection.execute(
+    `SELECT utilisateur_id, equipe, statut, rejoint_le
+     FROM ParticipationMatch
+     WHERE match_id = ? AND equipe IN ('A', 'B')
+     ORDER BY CASE WHEN statut = 'valide' THEN 0 ELSE 1 END, rejoint_le ASC`,
+    [match.id],
+  );
+
+  const winnerParticipant = pickParticipantByTeam(participants, winnerTeam);
+  const loserParticipant = pickParticipantByTeam(participants, loserTeam);
+
+  if (!winnerParticipant || !loserParticipant) {
+    throw new Error(
+      "Impossible de déterminer les joueurs du résultat de ligue",
+    );
+  }
+
+  await connection.execute(
+    `UPDATE LigueUtilisateur
+     SET points = points + 3,
+         victoires = victoires + 1
+     WHERE ligue_id = ? AND utilisateur_id = ?`,
+    [match.ligue_id, winnerParticipant.utilisateur_id],
+  );
+
+  await connection.execute(
+    `UPDATE LigueUtilisateur
+     SET defaites = defaites + 1
+     WHERE ligue_id = ? AND utilisateur_id = ?`,
+    [match.ligue_id, loserParticipant.utilisateur_id],
+  );
+}
+
 // GET /api/matchs
 exports.getMatchs = async (req, res) => {
   try {
@@ -10,8 +91,18 @@ exports.getMatchs = async (req, res) => {
                FROM MatchSport ms
                JOIN Sport s       ON s.id = ms.sport_id
                JOIN Utilisateur u ON u.id = ms.createur_id
-               WHERE ms.statut = 'ouvert' AND ms.prive = 0`;
-    const params = [];
+               WHERE ms.statut = 'ouvert'
+                 AND ms.ligue_id IS NULL
+                 AND (
+                   ms.prive = 0
+                   OR ms.createur_id = ?
+                   OR EXISTS (
+                     SELECT 1
+                     FROM ParticipationMatch pm
+                     WHERE pm.match_id = ms.id AND pm.utilisateur_id = ?
+                   )
+                 )`;
+    const params = [req.user.id, req.user.id];
 
     if (localisation) {
       sql += " AND ms.localisation LIKE ?";
@@ -31,6 +122,7 @@ exports.createMatch = async (req, res) => {
     const db = getPool();
     const {
       sport_id,
+      ligue_id,
       titre,
       date_heure,
       localisation,
@@ -40,12 +132,60 @@ exports.createMatch = async (req, res) => {
       nb_joueurs_max,
       nom_equipe_a,
       nom_equipe_b,
+      en_equipe,
       prive,
     } = req.body;
 
     if (!sport_id || !date_heure) {
       return res.status(400).json({ message: "sport_id et date_heure requis" });
     }
+
+    let finalLigueId = null;
+    if (ligue_id !== undefined && ligue_id !== null && ligue_id !== "") {
+      finalLigueId = Number(ligue_id);
+      if (!Number.isInteger(finalLigueId) || finalLigueId <= 0) {
+        return res.status(400).json({ message: "ligue_id invalide" });
+      }
+
+      const [membershipRows] = await db.execute(
+        `SELECT 1
+         FROM LigueUtilisateur
+         WHERE ligue_id = ? AND utilisateur_id = ?
+         LIMIT 1`,
+        [finalLigueId, req.user.id],
+      );
+
+      if (membershipRows.length === 0) {
+        return res
+          .status(403)
+          .json({ message: "Tu dois etre membre de la ligue" });
+      }
+    }
+
+    const [sportRows] = await db.execute("SELECT nom FROM Sport WHERE id = ?", [
+      sport_id,
+    ]);
+    if (sportRows.length === 0) {
+      return res.status(400).json({ message: "Sport invalide" });
+    }
+
+    const normalizeSportName = (name) =>
+      (name || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const soloSports = new Set(["tennis", "badminton", "padel"]);
+    const isSoloSport = soloSports.has(normalizeSportName(sportRows[0].nom));
+    const modeEquipe = isSoloSport ? Boolean(en_equipe) : true;
+
+    const finalNbA = modeEquipe ? Number(nb_equipe_a) || 1 : 1;
+    const finalNbB = modeEquipe ? Number(nb_equipe_b) || 1 : 1;
+    const finalNbRem = modeEquipe ? Number(nb_remplacants) || 0 : 0;
+    const finalNomA = modeEquipe ? nom_equipe_a || "Équipe A" : "Joueur 1";
+    const finalNomB = modeEquipe ? nom_equipe_b || "Équipe B" : "Joueur 2";
+    const finalNbJoueursMax =
+      Number(nb_joueurs_max) || finalNbA + finalNbB + finalNbRem;
 
     // Génération du code d'accès si match privé
     let code_acces = null;
@@ -54,20 +194,21 @@ exports.createMatch = async (req, res) => {
     }
 
     const [result] = await db.execute(
-      `INSERT INTO MatchSport (sport_id, createur_id, titre, date_heure, localisation, nb_joueurs_max, nb_equipe_a, nb_equipe_b, nb_remplacants, nom_equipe_a, nom_equipe_b, prive, code_acces)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO MatchSport (sport_id, createur_id, ligue_id, titre, date_heure, localisation, nb_joueurs_max, nb_equipe_a, nb_equipe_b, nb_remplacants, nom_equipe_a, nom_equipe_b, prive, code_acces)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         sport_id,
         req.user.id,
+        finalLigueId,
         titre || null,
         date_heure,
         localisation || null,
-        nb_joueurs_max || 2,
-        nb_equipe_a || 1,
-        nb_equipe_b || 1,
-        nb_remplacants || 0,
-        nom_equipe_a || "Équipe A",
-        nom_equipe_b || "Équipe B",
+        finalNbJoueursMax,
+        finalNbA,
+        finalNbB,
+        finalNbRem,
+        finalNomA,
+        finalNomB,
         prive ? 1 : 0,
         code_acces,
       ],
@@ -300,5 +441,171 @@ exports.retirerJoueur = async (req, res) => {
     res.json({ message: "Joueur retiré du match" });
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+// POST /api/matchs/:id/resultat – créateur enregistre le score final
+exports.enregistrerResultat = async (req, res) => {
+  const db = getPool();
+  const connection = await db.getConnection();
+
+  try {
+    const scoreA = Number(req.body.score_equipe_a);
+    const scoreB = Number(req.body.score_equipe_b);
+
+    if (
+      !Number.isInteger(scoreA) ||
+      !Number.isInteger(scoreB) ||
+      scoreA < 0 ||
+      scoreB < 0
+    ) {
+      return res.status(400).json({ message: "Scores invalides" });
+    }
+
+    if (scoreA === scoreB) {
+      return res
+        .status(400)
+        .json({ message: "Un vainqueur doit être déterminé" });
+    }
+
+    await connection.beginTransaction();
+
+    const [matchRows] = await connection.execute(
+      `SELECT *
+       FROM MatchSport
+       WHERE id = ?
+       FOR UPDATE`,
+      [req.params.id],
+    );
+
+    if (matchRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Match introuvable" });
+    }
+
+    const match = matchRows[0];
+
+    if (match.createur_id !== req.user.id) {
+      await connection.rollback();
+      return res.status(403).json({ message: "Interdit" });
+    }
+
+    if (match.statut === "annule") {
+      await connection.rollback();
+      return res.status(400).json({ message: "Le match est annulé" });
+    }
+
+    if (match.statut === "termine") {
+      await connection.rollback();
+      return res
+        .status(409)
+        .json({ message: "Le résultat est déjà enregistré" });
+    }
+
+    const winnerTeam = scoreA > scoreB ? "A" : "B";
+    const loserTeam = winnerTeam === "A" ? "B" : "A";
+
+    const [participants] = await connection.execute(
+      `SELECT utilisateur_id, equipe, statut, rejoint_le
+       FROM ParticipationMatch
+       WHERE match_id = ? AND equipe IN ('A', 'B')
+       ORDER BY CASE WHEN statut = 'valide' THEN 0 ELSE 1 END, rejoint_le ASC`,
+      [match.id],
+    );
+
+    const [ligueEquipes] = match.ligue_id
+      ? await connection.execute(
+          `SELECT id, nom
+           FROM LigueEquipe
+           WHERE ligue_id = ? AND nom IN (?, ?)`,
+          [match.ligue_id, match.nom_equipe_a, match.nom_equipe_b],
+        )
+      : [[]];
+
+    const hasPrecreatedTeams = ligueEquipes.length === 2;
+    const winningParticipants = participants.filter(
+      (participant) => participant.equipe === winnerTeam,
+    );
+    const losingParticipants = participants.filter(
+      (participant) => participant.equipe === loserTeam,
+    );
+    const winnerParticipant = pickParticipantByTeam(participants, winnerTeam);
+    const loserParticipant = pickParticipantByTeam(participants, loserTeam);
+
+    if ((!winnerParticipant || !loserParticipant) && !hasPrecreatedTeams) {
+      await connection.rollback();
+      return res
+        .status(400)
+        .json({ message: "Chaque côté doit avoir au moins un joueur assigné" });
+    }
+
+    const winningScore = Math.max(scoreA, scoreB);
+    const losingScore = Math.min(scoreA, scoreB);
+
+    if (winnerParticipant && loserParticipant) {
+      await connection.execute(
+        `INSERT INTO ResultatMatch (match_id, gagnant_id, perdant_id, score_gagnant, score_perdant, elo_delta)
+         VALUES (?, ?, ?, ?, ?, 0)`,
+        [
+          match.id,
+          winnerParticipant.utilisateur_id,
+          loserParticipant.utilisateur_id,
+          winningScore,
+          losingScore,
+        ],
+      );
+    }
+
+    const winningIds = [
+      ...new Set(winningParticipants.map((item) => item.utilisateur_id)),
+    ];
+    const losingIds = [
+      ...new Set(losingParticipants.map((item) => item.utilisateur_id)),
+    ];
+
+    for (const utilisateurId of winningIds) {
+      await connection.execute(
+        `UPDATE UtilisateurSport
+         SET victoires = victoires + 1
+         WHERE utilisateur_id = ? AND sport_id = ?`,
+        [utilisateurId, match.sport_id],
+      );
+    }
+
+    for (const utilisateurId of losingIds) {
+      await connection.execute(
+        `UPDATE UtilisateurSport
+         SET defaites = defaites + 1
+         WHERE utilisateur_id = ? AND sport_id = ?`,
+        [utilisateurId, match.sport_id],
+      );
+    }
+
+    await connection.execute(
+      `UPDATE MatchSport
+       SET score_equipe_a = ?,
+           score_equipe_b = ?,
+           vainqueur_equipe = ?,
+           statut = 'termine'
+       WHERE id = ?`,
+      [scoreA, scoreB, winnerTeam, match.id],
+    );
+
+    await applyLeagueStandingUpdate(connection, match, winnerTeam, loserTeam);
+
+    await connection.commit();
+    return res.json({
+      message: "Résultat enregistré",
+      score_equipe_a: scoreA,
+      score_equipe_b: scoreB,
+      vainqueur_equipe: winnerTeam,
+    });
+  } catch (err) {
+    await connection.rollback();
+    return res
+      .status(500)
+      .json({ message: "Erreur serveur", error: err.message });
+  } finally {
+    connection.release();
   }
 };

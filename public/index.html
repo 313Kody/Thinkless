@@ -9,7 +9,7 @@
   <body class="bg-gray-950 min-h-screen text-white">
     <!-- Modal rejoindre match privé -->
     <div
-      id="modal-code-prive"
+      id="modal-code-match"
       class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
     >
       <div
@@ -21,7 +21,7 @@
           Entre le code d'accès pour rejoindre ce match
         </p>
         <input
-          id="input-code-prive"
+          id="input-code-match"
           type="text"
           placeholder="Ex: AB12CD34"
           maxlength="8"
@@ -29,19 +29,19 @@
         />
         <div class="flex gap-3">
           <button
-            onclick="fermerModalCode()"
+            onclick="fermerModalCodeMatch()"
             class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
           >
             Annuler
           </button>
           <button
-            onclick="rejoindreAvecCode()"
+            onclick="rejoindreMatchAvecCode()"
             class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
           >
             Rejoindre
           </button>
         </div>
-        <p id="code-error" class="text-red-400 text-sm mt-3 hidden"></p>
+        <p id="code-error-match" class="text-red-400 text-sm mt-3 hidden"></p>
       </div>
     </div>
 
@@ -124,31 +124,27 @@
       const token = localStorage.getItem("token");
       if (!token) window.location.href = "/login.html";
 
-      let matchIdPrive = null;
-
       function logout() {
         localStorage.clear();
         window.location.href = "/accueil.html";
       }
 
-      function ouvrirModalCode(matchId) {
-        matchIdPrive = matchId;
-        document.getElementById("input-code-prive").value = "";
-        document.getElementById("code-error").classList.add("hidden");
-        document.getElementById("modal-code-prive").classList.remove("hidden");
+      function ouvrirModalCodeMatch() {
+        document.getElementById("input-code-match").value = "";
+        document.getElementById("code-error-match").classList.add("hidden");
+        document.getElementById("modal-code-match").classList.remove("hidden");
       }
 
-      function fermerModalCode() {
-        document.getElementById("modal-code-prive").classList.add("hidden");
-        matchIdPrive = null;
+      function fermerModalCodeMatch() {
+        document.getElementById("modal-code-match").classList.add("hidden");
       }
 
-      async function rejoindreAvecCode() {
+      async function rejoindreMatchAvecCode() {
         const code = document
-          .getElementById("input-code-prive")
+          .getElementById("input-code-match")
           .value.trim()
           .toUpperCase();
-        const err = document.getElementById("code-error");
+        const err = document.getElementById("code-error-match");
         err.classList.add("hidden");
 
         if (!code) {
@@ -168,7 +164,7 @@
         const data = await res.json();
 
         if (res.ok) {
-          fermerModalCode();
+          fermerModalCodeMatch();
           window.location.href = `/match.html?id=${data.match_id}`;
         } else {
           err.textContent = data.message;
@@ -216,7 +212,7 @@
               </button>
               ${
                 m.prive
-                  ? `<button onclick="ouvrirModalCode(${m.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition">🔒 Rejoindre</button>`
+                  ? `<button onclick="ouvrirModalCodeMatch()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition">🔒 Rejoindre</button>`
                   : `<button onclick="rejoindre(${m.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition">Rejoindre</button>`
               }
             </div>

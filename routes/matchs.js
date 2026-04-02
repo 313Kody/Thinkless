@@ -13,6 +13,7 @@ router.get("/:id", auth, matchController.getMatch);
 router.put("/:id", auth, matchController.updateMatch);
 router.delete("/:id", auth, matchController.deleteMatch);
 router.post("/:id/rejoindre", auth, matchController.rejoindreMatch);
+router.post("/:id/resultat", auth, matchController.enregistrerResultat);
 router.post("/:id/equipe", auth, matchController.choisirEquipe);
 router.post("/:id/valider", auth, matchController.validerJoueur);
 router.post("/:id/retirer-equipe", auth, matchController.retirerEquipe);

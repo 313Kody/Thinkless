@@ -100,6 +100,60 @@
       </div>
     </div>
 
+    <div
+      id="modal-result"
+      class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-gray-900 rounded-2xl p-6 border border-gray-700 max-w-md w-full mx-4"
+      >
+        <h3 class="text-lg font-bold mb-4">Enregistrer le résultat</h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label
+              id="result-label-a"
+              class="text-gray-400 text-sm mb-2 block"
+            ></label>
+            <input
+              id="result-score-a"
+              type="number"
+              min="0"
+              class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label
+              id="result-label-b"
+              class="text-gray-400 text-sm mb-2 block"
+            ></label>
+            <input
+              id="result-score-b"
+              type="number"
+              min="0"
+              class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+        <p class="text-gray-500 text-xs mt-3">
+          Les scores doivent être différents pour déterminer un vainqueur.
+        </p>
+        <div class="flex gap-3 mt-5">
+          <button
+            onclick="closeResultModal()"
+            class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Annuler
+          </button>
+          <button
+            onclick="saveResult()"
+            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition"
+          >
+            Valider le résultat
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Navbar -->
     <nav
       class="bg-gray-900 px-6 py-4 flex justify-between items-center border-b border-gray-800"
@@ -143,6 +197,13 @@
           <!-- Bouton gérer (créateur) -->
           <div id="btn-gerer" class="hidden flex gap-2">
             <button
+              id="btn-resultat"
+              onclick="openResultModal()"
+              class="bg-green-700 hover:bg-green-600 text-white text-sm px-3 py-2 rounded-lg transition"
+            >
+              Résultat
+            </button>
+            <button
               onclick="openEdit()"
               class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded-lg transition"
             >
@@ -166,6 +227,13 @@
             id="match-code"
             class="text-indigo-400 font-bold tracking-widest text-lg"
           ></span>
+        </div>
+        <div
+          id="result-section"
+          class="hidden mt-4 bg-gray-800 rounded-xl px-4 py-3"
+        >
+          <p class="text-gray-400 text-sm mb-1">Résultat</p>
+          <p id="result-text" class="text-white font-semibold"></p>
         </div>
       </div>
 
@@ -240,6 +308,36 @@
           <p class="text-gray-500 text-sm">Aucun joueur en attente</p>
         </div>
       </div>
+
+      <!-- Section rejoindre par code (visible si non-participant + match privé) -->
+      <div
+        id="section-code-match"
+        class="hidden bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-6"
+      >
+        <h3 class="text-lg font-bold mb-2">Tu as un code d'accès ?</h3>
+        <p class="text-gray-400 text-sm mb-4">
+          Ce match est privé. Entre le code pour le rejoindre.
+        </p>
+        <div class="flex gap-3">
+          <input
+            id="input-code-match-lobby"
+            type="text"
+            placeholder="Ex: AB12CD34"
+            maxlength="8"
+            class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 tracking-widest uppercase"
+          />
+          <button
+            onclick="rejoindreMatchLobbyAvecCode()"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition"
+          >
+            🔒 Rejoindre
+          </button>
+        </div>
+        <p
+          id="code-error-match-lobby"
+          class="text-red-400 text-sm mt-3 hidden"
+        ></p>
+      </div>
     </main>
 
     <script>
@@ -287,13 +385,49 @@
         document.getElementById("nom-equipe-a").textContent = m.nom_equipe_a;
         document.getElementById("nom-equipe-b").textContent = m.nom_equipe_b;
 
+        const statusBadge = document.getElementById("match-statut-badge");
+        statusBadge.textContent = (m.statut || "ouvert").toUpperCase();
+        if (m.statut === "termine") {
+          statusBadge.className =
+            "mt-2 text-xs font-semibold px-2 py-1 rounded-full bg-blue-900 text-blue-300";
+        } else if (m.statut === "annule") {
+          statusBadge.className =
+            "mt-2 text-xs font-semibold px-2 py-1 rounded-full bg-red-900 text-red-300";
+        } else {
+          statusBadge.className =
+            "mt-2 text-xs font-semibold px-2 py-1 rounded-full bg-green-900 text-green-400";
+        }
+
         // Bouton gérer visible que pour le créateur
         if (isCreateur) {
           document.getElementById("btn-gerer").classList.remove("hidden");
+          document
+            .getElementById("btn-resultat")
+            .classList.toggle("hidden", m.statut !== "ouvert");
           if (m.prive && m.code_acces) {
             document.getElementById("code-section").classList.remove("hidden");
             document.getElementById("match-code").textContent = m.code_acces;
           }
+        }
+
+        // Section "rejoindre par code" visible si match privé + non participant + ouvert
+        const estParticipant = !!moi;
+        if (m.prive && !estParticipant && m.statut === "ouvert") {
+          document
+            .getElementById("section-code-match")
+            .classList.remove("hidden");
+        } else {
+          document.getElementById("section-code-match").classList.add("hidden");
+        }
+
+        if (m.score_equipe_a !== null && m.score_equipe_b !== null) {
+          const winnerName =
+            m.vainqueur_equipe === "A" ? m.nom_equipe_a : m.nom_equipe_b;
+          document.getElementById("result-section").classList.remove("hidden");
+          document.getElementById("result-text").textContent =
+            `${m.nom_equipe_a} ${m.score_equipe_a} - ${m.score_equipe_b} ${m.nom_equipe_b} | Vainqueur: ${winnerName}`;
+        } else {
+          document.getElementById("result-section").classList.add("hidden");
         }
 
         const equipeA = m.participants.filter(
@@ -324,7 +458,9 @@
 
         // Bouton rejoindre équipe A
         const btnA = document.getElementById("btn-rejoindre-a");
-        if (moi && !isCreateur) {
+        if (m.statut !== "ouvert") {
+          btnA.classList.add("hidden");
+        } else if (moi && !isCreateur) {
           btnA.classList.remove("hidden");
           btnA.textContent = `Rejoindre ${m.nom_equipe_a}`;
           btnA.disabled = equipeA.length >= m.nb_equipe_a;
@@ -351,7 +487,9 @@
 
         // Bouton rejoindre équipe B
         const btnB = document.getElementById("btn-rejoindre-b");
-        if (moi && !isCreateur) {
+        if (m.statut !== "ouvert") {
+          btnB.classList.add("hidden");
+        } else if (moi && !isCreateur) {
           btnB.classList.remove("hidden");
           btnB.textContent = `Rejoindre ${m.nom_equipe_b}`;
           btnB.disabled = equipeB.length >= m.nb_equipe_b;
@@ -480,6 +618,49 @@
           headers: { Authorization: `Bearer ${token}` },
         });
         window.location.href = "/index.html";
+      }
+
+      function openResultModal() {
+        document.getElementById("result-label-a").textContent =
+          matchData.nom_equipe_a;
+        document.getElementById("result-label-b").textContent =
+          matchData.nom_equipe_b;
+        document.getElementById("result-score-a").value =
+          matchData.score_equipe_a ?? "";
+        document.getElementById("result-score-b").value =
+          matchData.score_equipe_b ?? "";
+        document.getElementById("modal-result").classList.remove("hidden");
+      }
+
+      function closeResultModal() {
+        document.getElementById("modal-result").classList.add("hidden");
+      }
+
+      async function saveResult() {
+        const res = await fetch(`/api/matchs/${matchId}/resultat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            score_equipe_a: parseInt(
+              document.getElementById("result-score-a").value,
+            ),
+            score_equipe_b: parseInt(
+              document.getElementById("result-score-b").value,
+            ),
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Erreur lors de l'enregistrement du résultat");
+          return;
+        }
+
+        closeResultModal();
+        loadMatch();
       }
 
       function openEdit() {

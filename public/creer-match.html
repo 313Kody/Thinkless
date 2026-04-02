@@ -33,10 +33,11 @@
           Copier le code
         </button>
         <button
-          onclick="window.location.href = '/index.html'"
+          id="btn-go-lobby"
+          onclick="goToCreatedMatch()"
           class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition"
         >
-          Aller aux matchs
+          Aller au lobby du match
         </button>
       </div>
     </div>
@@ -66,7 +67,7 @@
     <main class="max-w-lg mx-auto px-4 py-10">
       <h2 class="text-2xl font-bold mb-6">Créer un match</h2>
       <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-        <div class="mb-4">
+        <div id="sport-block" class="mb-4">
           <label class="block text-gray-400 text-sm mb-1">Sport</label>
           <select
             id="sport_id"
@@ -76,7 +77,52 @@
           </select>
         </div>
 
-        <div class="mb-4">
+        <div
+          id="solo-team-toggle"
+          class="hidden mb-4 bg-gray-800 rounded-lg px-4 py-3"
+        >
+          <div class="flex items-center gap-3">
+            <input
+              id="en_equipe"
+              type="checkbox"
+              class="w-4 h-4 accent-indigo-500"
+            />
+            <label class="text-gray-300 text-sm"
+              >Faire ce sport en équipe</label
+            >
+          </div>
+          <p class="text-gray-500 text-xs mt-2">
+            Désactivé: mode solo (1 vs 1). Activé: formulaire équipes classique.
+          </p>
+        </div>
+
+        <!-- Section équipes pré-créées -->
+        <div
+          id="precreated-teams-section"
+          class="hidden mb-4 bg-indigo-900 bg-opacity-30 rounded-lg px-4 py-3 border border-indigo-500"
+        >
+          <p class="text-indigo-300 text-sm font-semibold mb-3">
+            📋 Équipes pré-créées
+          </p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-gray-400 text-xs mb-2">Équipe 1</label>
+              <select
+                id="equipe_a_select"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              ></select>
+            </div>
+            <div>
+              <label class="block text-gray-400 text-xs mb-2">Équipe 2</label>
+              <select
+                id="equipe_b_select"
+                class="w-full bg-gray-800 text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+              ></select>
+            </div>
+          </div>
+        </div>
+
+        <div id="title-block" class="mb-4">
           <label class="block text-gray-400 text-sm mb-1">Titre</label>
           <input
             id="titre"
@@ -105,7 +151,7 @@
           />
         </div>
 
-        <div class="mb-4">
+        <div id="team-config-section" class="mb-4">
           <label class="block text-gray-400 text-sm mb-3">Équipes</label>
           <div class="grid grid-cols-2 gap-3 mb-3">
             <div>
@@ -173,6 +219,7 @@
         </div>
 
         <div
+          id="total-block"
           class="mb-6 bg-gray-800 rounded-lg px-4 py-3 text-sm text-gray-400"
         >
           Total :
@@ -180,7 +227,7 @@
           joueurs
         </div>
 
-        <div class="mb-4 flex items-center gap-3">
+        <div id="private-block" class="mb-4 flex items-center gap-3">
           <input id="prive" type="checkbox" class="w-4 h-4 accent-indigo-500" />
           <label class="text-gray-400 text-sm"
             >Match privé (accès par code uniquement)</label
@@ -200,6 +247,16 @@
 
     <script>
       const token = localStorage.getItem("token");
+      let createdMatchId = null;
+      const SOLO_SPORTS = new Set(["tennis", "badminton", "padel"]);
+      const sportsById = new Map();
+      const ligueIdFromUrl = new URLSearchParams(window.location.search).get(
+        "ligue_id",
+      );
+      let precreatedEquipes = [];
+      let hasEquipesPrecreated = false;
+      let ligueConfig = null;
+
       if (!token) window.location.href = "/login.html";
 
       function logout() {
@@ -210,6 +267,14 @@
       function showCodeModal(code) {
         document.getElementById("code-display").textContent = code;
         document.getElementById("modal-code").classList.remove("hidden");
+      }
+
+      function goToCreatedMatch() {
+        if (!createdMatchId) {
+          window.location.href = "/index.html";
+          return;
+        }
+        window.location.href = `/match.html?id=${createdMatchId}`;
       }
 
       function copyCode() {
@@ -228,45 +293,260 @@
         });
       });
 
+      function normalizeSportName(name) {
+        return (name || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+      }
+
+      function isSoloSportSelected() {
+        const sportId = Number(document.getElementById("sport_id").value);
+        const sportName = sportsById.get(sportId) || "";
+        return SOLO_SPORTS.has(normalizeSportName(sportName));
+      }
+
+      function updateModeUI() {
+        const isSoloSport = isSoloSportSelected();
+        const toggleBox = document.getElementById("solo-team-toggle");
+        const teamSection = document.getElementById("team-config-section");
+        const precreatedTeamsSection = document.getElementById(
+          "precreated-teams-section",
+        );
+        const sportBlock = document.getElementById("sport-block");
+        const titleBlock = document.getElementById("title-block");
+        const totalBlock = document.getElementById("total-block");
+        const privateBlock = document.getElementById("private-block");
+        const teamModeChecked = document.getElementById("en_equipe").checked;
+        const simpleLigueMode = Boolean(ligueIdFromUrl && hasEquipesPrecreated);
+
+        sportBlock.classList.toggle("hidden", simpleLigueMode);
+        titleBlock.classList.toggle("hidden", simpleLigueMode);
+        totalBlock.classList.toggle("hidden", simpleLigueMode);
+        privateBlock.classList.toggle("hidden", simpleLigueMode);
+
+        if (simpleLigueMode) {
+          toggleBox.classList.add("hidden");
+          teamSection.classList.add("hidden");
+          precreatedTeamsSection.classList.remove("hidden");
+          return;
+        }
+
+        if (isSoloSport) {
+          toggleBox.classList.remove("hidden");
+          precreatedTeamsSection.classList.add("hidden");
+          if (teamModeChecked) {
+            teamSection.classList.remove("hidden");
+          } else {
+            teamSection.classList.add("hidden");
+            document.getElementById("total-joueurs").textContent = 2;
+          }
+        } else if (hasEquipesPrecreated) {
+          // Sport d'équipes avec équipes pré-créées
+          toggleBox.classList.add("hidden");
+          document.getElementById("en_equipe").checked = false;
+          precreatedTeamsSection.classList.remove("hidden");
+          teamSection.classList.add("hidden");
+        } else {
+          // Sport d'équipes sans équipes pré-créées
+          toggleBox.classList.add("hidden");
+          document.getElementById("en_equipe").checked = false;
+          precreatedTeamsSection.classList.add("hidden");
+          teamSection.classList.remove("hidden");
+        }
+      }
+
+      async function loadEquipes() {
+        if (!ligueIdFromUrl) {
+          hasEquipesPrecreated = false;
+          updateModeUI();
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/ligues/${ligueIdFromUrl}/equipes`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            hasEquipesPrecreated = false;
+            updateModeUI();
+            return;
+          }
+
+          const equipes = await res.json();
+          if (Array.isArray(equipes) && equipes.length > 0) {
+            precreatedEquipes = equipes;
+            hasEquipesPrecreated = true;
+
+            // Remplir les selects
+            const selectA = document.getElementById("equipe_a_select");
+            const selectB = document.getElementById("equipe_b_select");
+            selectA.innerHTML = equipes
+              .map((e) => `<option value="${e.id}">${e.nom}</option>`)
+              .join("");
+            selectB.innerHTML = equipes
+              .map((e) => `<option value="${e.id}">${e.nom}</option>`)
+              .join("");
+            if (equipes.length > 1) {
+              selectB.value = equipes[1].id;
+            }
+
+            const titleInput = document.getElementById("titre");
+            if (titleInput && !titleInput.value && equipes.length > 1) {
+              titleInput.value = `${equipes[0].nom} vs ${equipes[1].nom}`;
+            }
+          } else {
+            hasEquipesPrecreated = false;
+          }
+          updateModeUI();
+        } catch (err) {
+          console.error("Erreur load équipes:", err);
+          hasEquipesPrecreated = false;
+          updateModeUI();
+        }
+      }
+
+      async function loadLigueConfig() {
+        if (!ligueIdFromUrl) return;
+
+        try {
+          const res = await fetch(`/api/ligues/${ligueIdFromUrl}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) return;
+
+          ligueConfig = await res.json();
+          if (ligueConfig?.sport_id) {
+            document.getElementById("sport_id").value = String(
+              ligueConfig.sport_id,
+            );
+          }
+        } catch (err) {
+          console.error("Erreur load ligue:", err);
+        }
+      }
+
       async function loadSports() {
         const res = await fetch("/api/sports", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const sports = await res.json();
+        sportsById.clear();
+        sports.forEach((s) => sportsById.set(Number(s.id), s.nom));
         document.getElementById("sport_id").innerHTML = sports
           .map((s) => `<option value="${s.id}">${s.nom}</option>`)
           .join("");
+
+        document
+          .getElementById("sport_id")
+          .addEventListener("change", updateModeUI);
+        document
+          .getElementById("en_equipe")
+          .addEventListener("change", updateModeUI);
+
+        await loadLigueConfig();
+        await loadEquipes();
+        updateModeUI();
       }
 
       async function creerMatch() {
         const error = document.getElementById("error");
         error.classList.add("hidden");
 
-        const nb_equipe_a = parseInt(
-          document.getElementById("nb_equipe_a").value,
-        );
-        const nb_equipe_b = parseInt(
-          document.getElementById("nb_equipe_b").value,
-        );
-        const nb_remplacants = parseInt(
-          document.getElementById("nb_remplacants").value,
-        );
+        let body;
+        if (hasEquipesPrecreated) {
+          // Utiliser les équipes pré-créées sélectionnées
+          const equipeAId = parseInt(
+            document.getElementById("equipe_a_select").value,
+          );
+          const equipeBId = parseInt(
+            document.getElementById("equipe_b_select").value,
+          );
+          const equipeA = precreatedEquipes.find((e) => e.id === equipeAId);
+          const equipeB = precreatedEquipes.find((e) => e.id === equipeBId);
 
-        const body = {
-          sport_id: parseInt(document.getElementById("sport_id").value),
-          titre: document.getElementById("titre").value,
-          date_heure: document.getElementById("date_heure").value,
-          localisation: document.getElementById("localisation").value,
-          nom_equipe_a:
-            document.getElementById("nom_equipe_a").value || "Équipe A",
-          nom_equipe_b:
-            document.getElementById("nom_equipe_b").value || "Équipe B",
-          nb_equipe_a,
-          nb_equipe_b,
-          nb_remplacants,
-          nb_joueurs_max: nb_equipe_a + nb_equipe_b + nb_remplacants,
-          prive: document.getElementById("prive").checked,
-        };
+          if (!equipeA || !equipeB) {
+            error.textContent = "Choisis deux équipes valides";
+            error.classList.remove("hidden");
+            return;
+          }
+
+          if (equipeAId === equipeBId) {
+            error.textContent = "Choisis deux équipes différentes";
+            error.classList.remove("hidden");
+            return;
+          }
+
+          const slotsParEquipe = Number(ligueConfig?.slots_par_equipe) || 5;
+          const dateHeure = document.getElementById("date_heure").value;
+          const localisation = document.getElementById("localisation").value;
+
+          if (!dateHeure || !localisation) {
+            error.textContent = "Date et lieu requis";
+            error.classList.remove("hidden");
+            return;
+          }
+
+          body = {
+            sport_id:
+              Number(ligueConfig?.sport_id) ||
+              parseInt(document.getElementById("sport_id").value),
+            ligue_id: ligueIdFromUrl ? parseInt(ligueIdFromUrl) : null,
+            titre: `${equipeA.nom} vs ${equipeB.nom}`,
+            date_heure: dateHeure,
+            localisation: localisation,
+            en_equipe: true,
+            nom_equipe_a: equipeA.nom,
+            nom_equipe_b: equipeB.nom,
+            nb_equipe_a: slotsParEquipe,
+            nb_equipe_b: slotsParEquipe,
+            nb_remplacants: 0,
+            nb_joueurs_max: slotsParEquipe * 2,
+            prive: false,
+          };
+        } else {
+          // Formulaire normal
+          const isSoloSport = isSoloSportSelected();
+          const teamMode = isSoloSport
+            ? document.getElementById("en_equipe").checked
+            : true;
+
+          let nb_equipe_a = parseInt(
+            document.getElementById("nb_equipe_a").value,
+          );
+          let nb_equipe_b = parseInt(
+            document.getElementById("nb_equipe_b").value,
+          );
+          let nb_remplacants = parseInt(
+            document.getElementById("nb_remplacants").value,
+          );
+          let nom_equipe_a = document.getElementById("nom_equipe_a").value;
+          let nom_equipe_b = document.getElementById("nom_equipe_b").value;
+
+          if (!teamMode) {
+            nb_equipe_a = 1;
+            nb_equipe_b = 1;
+            nb_remplacants = 0;
+            nom_equipe_a = "Joueur 1";
+            nom_equipe_b = "Joueur 2";
+          }
+
+          body = {
+            sport_id: parseInt(document.getElementById("sport_id").value),
+            ligue_id: ligueIdFromUrl ? parseInt(ligueIdFromUrl) : null,
+            titre: document.getElementById("titre").value,
+            date_heure: document.getElementById("date_heure").value,
+            localisation: document.getElementById("localisation").value,
+            en_equipe: teamMode,
+            nom_equipe_a: nom_equipe_a || "Équipe A",
+            nom_equipe_b: nom_equipe_b || "Équipe B",
+            nb_equipe_a,
+            nb_equipe_b,
+            nb_remplacants,
+            nb_joueurs_max: nb_equipe_a + nb_equipe_b + nb_remplacants,
+            prive: document.getElementById("prive").checked,
+          };
+        }
 
         const res = await fetch("/api/matchs", {
           method: "POST",
@@ -280,10 +560,11 @@
         const data = await res.json();
 
         if (res.ok) {
+          createdMatchId = data.id;
           if (data.code_acces) {
             showCodeModal(data.code_acces);
           } else {
-            window.location.href = "/index.html";
+            goToCreatedMatch();
           }
         } else {
           error.textContent = data.message;

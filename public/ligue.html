@@ -103,6 +103,7 @@
 
       <!-- Classement -->
       <div id="classement-section" class="hidden">
+        <p id="classement-kind" class="text-gray-400 text-sm mb-2"></p>
         <div class="space-y-2" id="classement-list"></div>
       </div>
 
@@ -217,7 +218,7 @@
         if (isMember) {
           const btnCreerMatch = document.createElement("button");
           btnCreerMatch.onclick = () =>
-            (window.location.href = "/creer-match.html");
+            (window.location.href = `/creer-match.html?ligue_id=${ligueId}`);
           btnCreerMatch.className =
             "bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition";
           btnCreerMatch.textContent = "+ Match";
@@ -281,6 +282,15 @@
 
           const classement = await res.json();
           const container = document.getElementById("classement-list");
+          const kindLabel = document.getElementById("classement-kind");
+
+          const isTeamRanking =
+            classement.length > 0
+              ? classement[0].ranking_type === "equipe"
+              : Boolean(ligueData && Number(ligueData.nb_equipe) > 1);
+          kindLabel.textContent = isTeamRanking
+            ? "Classement des équipes"
+            : "Classement des joueurs";
 
           if (classement.length === 0) {
             container.innerHTML =

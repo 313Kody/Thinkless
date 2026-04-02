@@ -7,9 +7,9 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 
-DROP TABLE IF EXISTS Utilisateur, Sport, UtilisateurSport, JeuEsport, UtilisateurJeu,
+DROP TABLE IF EXISTS InvitationMatch, InvitationLigue, Utilisateur, Sport, UtilisateurSport, JeuEsport, UtilisateurJeu,
   EquipeEsport, EquipeMembre, MatchSport, ParticipationMatch,
-  ResultatMatch, Ligue, LigueUtilisateur, MatchEsport,
+  ResultatMatch, LigueEquipe, Ligue, LigueUtilisateur, MatchEsport,
   MatchEquipe, ResultatMatchEsport;
 
 -- ------------------------------------------------------------
@@ -145,6 +145,21 @@ CREATE TABLE LigueUtilisateur (
     REFERENCES Utilisateur(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Table pour stocker les équipes pré-créées d'une ligue
+CREATE TABLE IF NOT EXISTS LigueEquipe (
+  id            INT UNSIGNED  AUTO_INCREMENT PRIMARY KEY,
+  ligue_id      INT UNSIGNED  NOT NULL,
+  nom           VARCHAR(100)  NOT NULL,
+  created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_le_ligue FOREIGN KEY (ligue_id)
+    REFERENCES Ligue(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_ligue_nom (ligue_id, nom)
+) ENGINE=InnoDB;
+
+ALTER TABLE LigueUtilisateur ADD COLUMN equipe_id INT UNSIGNED DEFAULT NULL;
+ALTER TABLE LigueUtilisateur ADD CONSTRAINT fk_lu_equipe 
+  FOREIGN KEY (equipe_id) REFERENCES LigueEquipe(id) ON DELETE SET NULL;
+
 -- ------------------------------------------------------------
 -- 8. Match sport physique
 -- ------------------------------------------------------------
@@ -162,6 +177,9 @@ CREATE TABLE MatchSport (
   nb_remplacants  TINYINT UNSIGNED DEFAULT 0,
   nom_equipe_a    VARCHAR(100) DEFAULT 'Équipe A',
   nom_equipe_b    VARCHAR(100) DEFAULT 'Équipe B',
+  score_equipe_a  SMALLINT DEFAULT NULL,
+  score_equipe_b  SMALLINT DEFAULT NULL,
+  vainqueur_equipe ENUM('A','B') DEFAULT NULL,
   statut          ENUM('ouvert','complet','termine','annule')
                   NOT NULL DEFAULT 'ouvert',
   created_at      DATETIME  NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -314,3 +332,18 @@ CREATE INDEX idx_participation_user    ON ParticipationMatch(utilisateur_id);
 CREATE INDEX idx_ligueutilisateur_pts  ON LigueUtilisateur(ligue_id, points DESC);
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- Pour la gestion des équipes dans les matchs
+
+-- Ajouter support des équipes et statut pour les matchs
+ALTER TABLE ParticipationMatch ADD COLUMN equipe ENUM('A', 'B') DEFAULT NULL;
+ALTER TABLE ParticipationMatch ADD COLUMN statut ENUM('en_attente', 'valide') DEFAULT 'en_attente';
+
+-- Colonne prive et code_acces pour les matchs privés
+ALTER TABLE MatchSport ADD COLUMN prive TINYINT(1) DEFAULT 0;
+ALTER TABLE MatchSport ADD COLUMN code_acces VARCHAR(8) DEFAULT NULL;
+
+-- Ajout de colonnes config ligue
+ALTER TABLE Ligue ADD COLUMN nb_equipe INT UNSIGNED DEFAULT 2;
+ALTER TABLE Ligue ADD COLUMN slots_par_equipe INT UNSIGNED DEFAULT 5;
+ALTER TABLE Ligue ADD COLUMN code_acces VARCHAR(8) DEFAULT NULL;
