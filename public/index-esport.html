@@ -1,10 +1,12 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Thinkless E-sport</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/swal-utils.js"></script>
     <script src="/rank-utils.js"></script>
   </head>
   <body class="min-h-screen text-white bg-slate-950">
@@ -319,7 +321,7 @@
           await api(`/api/esport/matchs/${id}/rejoindre`, { method: "POST" });
           window.location.href = `/match-esport.html?id=${id}`;
         } catch (err) {
-          alert(err.message);
+          showAlert(err.message);
         }
       }
 
@@ -336,3 +338,7 @@
     </script>
   </body>
 </html>
+
+
+
+

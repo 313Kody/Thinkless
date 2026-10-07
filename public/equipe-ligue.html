@@ -1,0 +1,425 @@
+﻿<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Equipe de ligue - Thinkless</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/swal-utils.js"></script>
+  </head>
+  <body class="min-h-screen bg-gray-950 text-white">
+    <script>
+      function showAlert(message) {
+        Swal.fire({
+          text: message,
+          background: "#111827",
+          color: "#f9fafb",
+          confirmButtonColor: "#d97706",
+          customClass: { popup: "rounded-2xl border border-amber-800" },
+        });
+      }
+    </script>
+    <nav
+      class="fixed inset-x-0 top-0 z-30 bg-gray-900 border-b border-gray-800 px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex items-center justify-between gap-2"
+    >
+      <div class="flex items-center gap-3">
+        <button
+          onclick="toggleSidebar()"
+          class="md:hidden text-gray-300 text-xl"
+          aria-label="Ouvrir le menu"
+        >
+          ☰
+        </button>
+        <a
+          id="back-link"
+          href="/ligues.html"
+          class="text-lg sm:text-xl font-bold text-indigo-400"
+          >Thinkless</a
+        >
+      </div>
+      <div class="flex items-center gap-3">
+        <a
+          id="navbar-league-link"
+          href="#"
+          class="inline-flex bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-2 rounded-lg transition whitespace-nowrap"
+          >← <span class="hidden sm:inline">Retour à la </span> ligue</a
+        >
+        <button
+          onclick="logout()"
+          class="hidden sm:inline text-sm text-red-400 hover:text-red-300"
+        >
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <div
+      id="sidebar-backdrop"
+      onclick="toggleSidebar()"
+      class="hidden fixed inset-0 top-[57px] z-10 bg-black/60 md:hidden"
+    ></div>
+    <aside
+      id="sidebar"
+      class="fixed top-[57px] sm:top-[65px] bottom-0 left-0 z-20 w-[min(82vw,18rem)] -translate-x-full md:translate-x-0 bg-gray-900 border-r border-gray-800 p-4 transition-transform duration-200 shadow-2xl md:shadow-none"
+    >
+      <p class="text-xs uppercase tracking-[0.18em] text-gray-500 mb-4">
+        Navigation ligue
+      </p>
+      <nav class="space-y-2">
+        <a
+          id="sidebar-league-link"
+          href="#"
+          class="block rounded-lg px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+          >Vue de la ligue</a
+        >
+        <a
+          href="#players-list"
+          class="block rounded-lg px-3 py-2 bg-gray-800 text-white"
+          >Équipe</a
+        >
+        <a
+          id="sidebar-matches-link"
+          href="#"
+          class="block rounded-lg px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+          >Matchs</a
+        >
+        <a
+          id="sidebar-ranking-link"
+          href="#"
+          class="block rounded-lg px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+          >Classement</a
+        >
+      </nav>
+    </aside>
+
+    <main
+      class="w-full max-w-3xl mx-auto md:ml-72 px-3 sm:px-4 py-6 sm:py-8 pt-20 sm:pt-24 overflow-x-hidden"
+    >
+      <a
+        id="return-link"
+        class="text-gray-400 hover:text-white text-sm"
+        href="#"
+        >← Retour à la ligue</a
+      >
+      <section
+        id="team-card"
+        class="mt-4 sm:mt-5 bg-gray-900 rounded-2xl border border-gray-800 p-4 sm:p-6"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p
+              id="team-poule"
+              class="text-xs uppercase tracking-[0.18em] text-amber-300"
+            ></p>
+            <div id="team-logo" class="mb-2"></div>
+            <h1
+              id="team-name"
+              class="text-2xl sm:text-3xl font-black mt-1 break-words"
+            >
+              Chargement...
+            </h1>
+            <p
+              id="team-captain"
+              class="text-gray-400 text-sm sm:text-base mt-2"
+            ></p>
+            <div
+              id="team-logo-management"
+              class="hidden mt-3 flex flex-wrap gap-2 items-center"
+            >
+              <label
+                class="cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold px-3 py-2 rounded-lg"
+              >
+                Modifier le logo
+                <input
+                  id="team-logo-input"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                />
+              </label>
+              <button
+                id="team-logo-upload"
+                onclick="uploadTeamLogo()"
+                class="hidden bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-2 rounded-lg"
+              >
+                Enregistrer
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="mt-4 sm:mt-6 bg-gray-900 rounded-2xl border border-gray-800 p-4 sm:p-6"
+      >
+        <h2 class="text-xl font-bold mb-4">Joueurs</h2>
+        <div id="players-list" class="grid gap-3"></div>
+        <div
+          id="captain-management"
+          class="hidden mt-5 border-t border-gray-800 pt-4"
+        >
+          <label class="block text-gray-400 text-sm mb-2"
+            >Désigner le capitaine</label
+          >
+          <div class="flex flex-col sm:flex-row gap-2">
+            <select
+              id="captain-select"
+              class="w-full sm:flex-1 bg-gray-800 text-white rounded-lg px-3 py-2"
+            ></select>
+            <button
+              onclick="designateCaptain()"
+              class="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-semibold px-4 py-2 rounded-lg"
+            >
+              Désigner
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="requests-section"
+        class="hidden mt-4 sm:mt-6 bg-gray-900 rounded-2xl border border-amber-800/70 p-4 sm:p-6"
+      >
+        <h2 class="text-xl font-bold mb-4 text-amber-300">
+          Demandes d’adhésion
+        </h2>
+        <div id="requests-list" class="grid gap-3"></div>
+      </section>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+      const params = new URLSearchParams(window.location.search);
+      const ligueId = params.get("ligue_id");
+      const equipeId = params.get("equipe_id");
+
+      function setLeagueLinks() {
+        const leagueUrl = `/ligue.html?id=${ligueId}`;
+        document.getElementById("return-link").href = leagueUrl;
+        document.getElementById("navbar-league-link").href = leagueUrl;
+        document.getElementById("sidebar-league-link").href = leagueUrl;
+        document.getElementById("sidebar-matches-link").href =
+          `${leagueUrl}&tab=matchs`;
+        document.getElementById("sidebar-ranking-link").href =
+          `${leagueUrl}&tab=classement`;
+      }
+
+      function toggleSidebar() {
+        document
+          .getElementById("sidebar")
+          .classList.toggle("-translate-x-full");
+        document.getElementById("sidebar-backdrop").classList.toggle("hidden");
+      }
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      function escapeHtml(value) {
+        return String(value || "").replace(
+          /[&<>'"]/g,
+          (character) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              "'": "&#39;",
+              '"': "&quot;",
+            })[character],
+        );
+      }
+
+      async function loadTeam() {
+        const res = await fetch(`/api/ligues/${ligueId}/equipes/${equipeId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Equipe indisponible");
+
+        const team = data.equipe;
+        document.getElementById("return-link").href =
+          `/ligue.html?id=${ligueId}`;
+        document.getElementById("team-name").textContent = team.nom;
+        document.getElementById("team-logo").innerHTML = team.logo_url
+          ? `<img src="${escapeHtml(team.logo_url)}" alt="" class="w-16 h-16 rounded-2xl object-cover border border-gray-700" />`
+          : `<div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-700 flex items-center justify-center text-2xl font-black">${escapeHtml(team.nom.charAt(0).toUpperCase())}</div>`;
+        document
+          .getElementById("team-logo-management")
+          .classList.toggle("hidden", !data.can_manage);
+        document.getElementById("team-poule").textContent =
+          `Poule ${team.poule || "-"}`;
+        document.getElementById("team-captain").textContent =
+          team.capitaine_pseudo
+            ? `Capitaine : ${team.capitaine_pseudo}`
+            : "Capitaine à désigner";
+
+        document.getElementById("players-list").innerHTML = data.joueurs.length
+          ? data.joueurs
+              .map(
+                (player) => `
+            <article class="flex items-center justify-between gap-3 rounded-xl border ${Number(player.est_capitaine) ? "border-amber-500/80 bg-amber-950/20" : "border-gray-800 bg-gray-800/60"} px-4 py-3">
+              <div class="flex items-center gap-3 min-w-0">
+                ${player.avatar_url ? `<img src="${escapeHtml(player.avatar_url)}" alt="" class="w-10 h-10 rounded-full object-cover border border-gray-700 shrink-0" />` : `<div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold shrink-0">${escapeHtml((player.pseudo || "?").charAt(0).toUpperCase())}</div>`}
+                <div class="min-w-0">
+                <p class="font-semibold truncate">${escapeHtml(`${player.prenom || ""} ${player.nom || ""}`.trim() || player.pseudo)}</p>
+                <p class="text-gray-400 text-sm">@${escapeHtml(player.pseudo)}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                ${Number(player.est_capitaine) ? '<span class="text-amber-300 text-xs font-bold uppercase tracking-wide">Capitaine</span>' : data.can_manage ? `<button onclick="designateCaptain(${player.id})" class="text-amber-300 text-xs border border-amber-800 hover:bg-amber-900/40 px-3 py-2 rounded-lg">Désigner capitaine</button>` : '<span class="text-gray-500 text-xs">Joueur</span>'}
+              </div>
+            </article>
+          `,
+              )
+              .join("")
+          : '<p class="text-gray-500">Aucun joueur accepté dans cette équipe.</p>';
+
+        document.getElementById("team-request-button")?.remove();
+        if (data.can_choose && !data.equipe.est_mon_equipe) {
+          const requestButton = document.createElement("button");
+          requestButton.id = "team-request-button";
+          requestButton.className =
+            "mt-4 w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-lg";
+          requestButton.textContent = "Demander à rejoindre l’équipe";
+          requestButton.onclick = () => requestToJoinTeam();
+          document.getElementById("players-list").after(requestButton);
+        }
+
+        const captainManagement = document.getElementById("captain-management");
+        if (data.can_manage && data.joueurs.length) {
+          captainManagement.classList.remove("hidden");
+          document.getElementById("captain-select").innerHTML = data.joueurs
+            .map(
+              (player) =>
+                `<option value="${player.id}" ${Number(player.est_capitaine) ? "selected" : ""}>${escapeHtml(player.pseudo)}</option>`,
+            )
+            .join("");
+        } else {
+          captainManagement.classList.add("hidden");
+        }
+
+        const requestsSection = document.getElementById("requests-section");
+        if (data.can_manage) {
+          requestsSection.classList.remove("hidden");
+          document.getElementById("requests-list").innerHTML = data.demandes
+            .length
+            ? data.demandes
+                .map(
+                  (request) => `
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-gray-800 px-3 sm:px-4 py-3">
+                <span class="break-words">${escapeHtml(`${request.prenom || ""} ${request.nom || ""}`.trim() || request.pseudo)} <span class="text-gray-400">@${escapeHtml(request.pseudo)}</span></span>
+                <div class="grid grid-cols-2 gap-2 sm:flex">
+                  <button onclick="decide(${request.id}, 'accepter')" class="text-emerald-300 text-xs border border-emerald-800 px-3 py-2 rounded-lg">Accepter</button>
+                  <button onclick="decide(${request.id}, 'refuser')" class="text-red-300 text-xs border border-red-800 px-3 py-2 rounded-lg">Refuser</button>
+                </div>
+              </div>
+            `,
+                )
+                .join("")
+            : '<p class="text-gray-500">Aucune demande en attente.</p>';
+        }
+      }
+
+      async function decide(requestId, decision) {
+        const res = await fetch(
+          `/api/ligues/${ligueId}/equipes/${equipeId}/demandes/${requestId}/decision`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ decision }),
+          },
+        );
+        const data = await res.json();
+        showAlert(data.message || "Action terminée");
+        if (res.ok) loadTeam();
+      }
+
+      document
+        .getElementById("team-logo-input")
+        .addEventListener("change", (event) => {
+          document
+            .getElementById("team-logo-upload")
+            .classList.toggle("hidden", !event.target.files?.[0]);
+        });
+
+      async function uploadTeamLogo() {
+        const file = document.getElementById("team-logo-input").files?.[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append("logo", file);
+        const res = await fetch(
+          `/api/ligues/${ligueId}/equipes/${equipeId}/logo`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          },
+        );
+        const data = await res.json();
+        showAlert(data.message || "Logo mis à jour");
+        if (res.ok) {
+          document.getElementById("team-logo-upload").classList.add("hidden");
+          document.getElementById("team-logo-input").value = "";
+          await loadTeam();
+        }
+      }
+
+      async function requestToJoinTeam() {
+        const res = await fetch(
+          `/api/ligues/${ligueId}/equipes/${equipeId}/rejoindre`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const data = await res.json();
+        showAlert(data.message || "Demande envoyée");
+        if (res.ok) await loadTeam();
+      }
+
+      async function designateCaptain(utilisateurId = null) {
+        const selectedUserId = Number(
+          utilisateurId || document.getElementById("captain-select").value,
+        );
+        if (!selectedUserId) return;
+        const confirmed = await showConfirm(
+          "Désigner ce joueur comme capitaine ?",
+          {
+            confirmText: "Désigner",
+            icon: "question",
+          },
+        );
+        if (!confirmed) return;
+        const res = await fetch(
+          `/api/ligues/${ligueId}/equipes/${equipeId}/capitaine`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ utilisateur_id: selectedUserId }),
+          },
+        );
+        const data = await res.json();
+        showAlert(data.message || "Action terminée");
+        if (res.ok) await loadTeam();
+      }
+
+      if (!ligueId || !equipeId) {
+        window.location.href = "/ligues.html";
+      } else {
+        setLeagueLinks();
+        loadTeam().catch((error) => {
+          document.getElementById("team-name").textContent = error.message;
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,10 +1,12 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Thinkless – Ligues E-sport</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/swal-utils.js"></script>
   </head>
   <body class="bg-slate-950 min-h-screen text-white">
     <div
@@ -295,25 +297,25 @@
         });
         const data = await res.json();
         if (res.ok) {
-          alert(data.message);
+          showAlert(data.message);
           loadLigues();
         } else {
-          alert(data.message);
+          showAlert(data.message);
         }
       }
 
       async function quitterLigue(id) {
-        if (!confirm("Quitter cette ligue ?")) return;
+        if (!(await showConfirm("Quitter cette ligue ?"))) return;
         const res = await fetch(`/api/esport/ligues/${id}/quitter`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
         if (res.ok) {
-          alert(data.message);
+          showAlert(data.message);
           loadLigues();
         } else {
-          alert(data.message);
+          showAlert(data.message);
         }
       }
 
@@ -321,3 +323,7 @@
     </script>
   </body>
 </html>
+
+
+
+

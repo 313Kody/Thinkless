@@ -1,10 +1,12 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Thinkless – Détail Ligue E-sport</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/swal-utils.js"></script>
     <script src="/rank-utils.js"></script>
   </head>
   <body class="bg-slate-950 min-h-screen text-white">
@@ -156,9 +158,9 @@
         if (!code) return;
         try {
           await navigator.clipboard.writeText(code);
-          alert("Code copié dans le presse-papiers");
+          showAlert("Code copié dans le presse-papiers");
         } catch {
-          alert(`Code de la ligue: ${code}`);
+          showAlert(`Code de la ligue: ${code}`);
         }
       }
 
@@ -196,7 +198,7 @@
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
-          alert("Ligue e-sport introuvable ou erreur de chargement");
+          showAlert("Ligue e-sport introuvable ou erreur de chargement");
           window.location.href = "/ligues-esport.html";
           return;
         }
@@ -379,25 +381,25 @@
         });
         const data = await res.json();
         if (res.ok) {
-          alert(data.message);
+          showAlert(data.message);
           loadLigue();
         } else {
-          alert(data.message);
+          showAlert(data.message);
         }
       }
 
       async function quitterLigue() {
-        if (!confirm("Quitter cette ligue ?")) return;
+        if (!(await showConfirm("Quitter cette ligue ?"))) return;
         const res = await fetch(`/api/esport/ligues/${ligueId}/quitter`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
         if (res.ok) {
-          alert(data.message);
+          showAlert(data.message);
           loadLigue();
         } else {
-          alert(data.message);
+          showAlert(data.message);
         }
       }
 
@@ -405,3 +407,7 @@
     </script>
   </body>
 </html>
+
+
+
+

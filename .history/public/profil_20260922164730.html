@@ -1,0 +1,697 @@
+﻿<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thinkless – Profil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/swal-utils.js"></script>
+    <script src="/rank-utils.js"></script>
+  </head>
+  <body class="bg-gray-950 min-h-screen text-white">
+    <!-- Toast notification -->
+    <div
+      id="toast"
+      class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm font-semibold hidden transition-all"
+    ></div>
+
+    <!-- Navbar -->
+    <nav
+      class="bg-gray-900 px-6 py-4 flex justify-between items-center border-b border-gray-800"
+    >
+      <a href="/accueil.html" class="text-xl font-bold text-indigo-400"
+        >Thinkless</a
+      >
+      <button
+        onclick="window.location.href = '/index.html'"
+        class="text-sm text-gray-400 hover:text-white transition"
+      >
+        ← Retour
+      </button>
+      <button
+        onclick="logout()"
+        class="text-sm text-red-400 hover:text-red-300 transition"
+      >
+        Déconnexion
+      </button>
+    </nav>
+
+    <main class="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <!-- Carte profil -->
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <div class="flex items-center gap-4">
+          <div class="relative">
+            <img
+              id="avatar-image"
+              alt="Photo de profil"
+              class="w-16 h-16 rounded-full object-cover border border-gray-700 hidden"
+            />
+            <div
+              class="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center text-2xl font-bold"
+              id="avatar"
+            >
+              ?
+            </div>
+          </div>
+          <div>
+            <p class="text-gray-300 text-sm" id="identite-display"></p>
+            <h2 class="text-2xl font-bold" id="pseudo">Chargement...</h2>
+            <p class="text-gray-400 text-sm" id="localisation-display"></p>
+            <p class="text-gray-500 text-xs" id="email-display"></p>
+          </div>
+        </div>
+
+        <div class="mt-5 space-y-3">
+          <label
+            class="inline-flex items-center justify-center cursor-pointer bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-semibold transition"
+          >
+            <input
+              id="avatar-input"
+              type="file"
+              accept="image/*"
+              class="hidden"
+            />
+            Choisir une photo
+          </label>
+          <button
+            id="avatar-upload-btn"
+            onclick="uploadAvatar()"
+            class="hidden bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-sm font-semibold transition"
+          >
+            Enregistrer la photo
+          </button>
+          <p id="avatar-status" class="text-xs text-gray-400"></p>
+        </div>
+      </div>
+
+      <!-- Informations générales -->
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <h3 class="text-lg font-bold mb-4">Informations générales</h3>
+        <div class="space-y-3">
+          <div class="flex gap-2">
+            <input
+              id="input-nom"
+              type="text"
+              placeholder="Nom"
+              class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            />
+            <input
+              id="input-prenom"
+              type="text"
+              placeholder="Prénom"
+              class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            />
+            <button
+              onclick="updateIdentity()"
+              class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-semibold transition"
+            >
+              Changer
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <input
+              id="input-pseudo"
+              type="text"
+              placeholder="Nouveau pseudo"
+              class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            />
+            <button
+              onclick="updatePseudo()"
+              class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-semibold transition"
+            >
+              Changer
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <input
+              id="input-localisation"
+              type="text"
+              placeholder="Localisation (ville, pays…)"
+              class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            />
+            <button
+              onclick="updateLocalisation()"
+              class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-semibold transition"
+            >
+              Changer
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Changer le mot de passe -->
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <h3 class="text-lg font-bold mb-4">Changer le mot de passe</h3>
+        <div class="space-y-3">
+          <input
+            id="input-ancien-mdp"
+            type="password"
+            placeholder="Ancien mot de passe"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+          />
+          <input
+            id="input-nouveau-mdp"
+            type="password"
+            placeholder="Nouveau mot de passe (12 car. min, MAJ, chiffre, symbole)"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+          />
+          <input
+            id="input-confirmer-mdp"
+            type="password"
+            placeholder="Confirmer le nouveau mot de passe"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+          />
+          <button
+            onclick="updatePassword()"
+            class="w-full bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-semibold transition"
+          >
+            Mettre à jour le mot de passe
+          </button>
+        </div>
+      </div>
+
+      <!-- Sports pratiqués -->
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <h3 class="text-lg font-bold mb-4">Sports pratiqués</h3>
+        <div id="sports-list" class="flex flex-wrap gap-2 mb-4"></div>
+        <div class="grid md:grid-cols-[1fr_220px_auto] gap-2">
+          <select
+            id="select-sport"
+            class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+          >
+            <option value="">-- Choisir un sport --</option>
+          </select>
+          <select
+            id="select-sport-level"
+            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+          ></select>
+          <button
+            onclick="addSport()"
+            class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-semibold transition"
+          >
+            Ajouter
+          </button>
+        </div>
+      </div>
+
+      <!-- Jeux e-sport -->
+      <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <h3 class="text-lg font-bold mb-4">Jeux e-sport</h3>
+        <div id="jeux-list" class="flex flex-wrap gap-2 mb-4"></div>
+        <div class="grid md:grid-cols-[1fr_220px_auto] gap-2">
+          <select
+            id="select-jeu"
+            class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+          >
+            <option value="">-- Choisir un jeu --</option>
+          </select>
+          <select
+            id="select-jeu-level"
+            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+          ></select>
+          <button
+            onclick="addJeu()"
+            class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg text-sm font-semibold transition"
+          >
+            Ajouter
+          </button>
+        </div>
+      </div>
+
+      <!-- Mon équipe -->
+      <div
+        id="equipe-section"
+        class="bg-gray-900 rounded-2xl p-6 border border-gray-800 hidden"
+      >
+        <h3 class="text-lg font-bold mb-3">Mes équipes</h3>
+        <div id="equipes-list" class="space-y-3"></div>
+      </div>
+
+      <!-- Zone de danger -->
+      <div class="bg-gray-900 rounded-2xl p-6 border border-red-900">
+        <h3 class="text-lg font-bold text-red-400 mb-2">Zone de danger</h3>
+        <p class="text-gray-400 text-sm mb-4">
+          La suppression de votre compte est irréversible. Toutes vos données
+          seront effacées.
+        </p>
+        <div class="space-y-3">
+          <input
+            id="input-delete-mdp"
+            type="password"
+            placeholder="Confirmer avec votre mot de passe"
+            class="w-full bg-gray-800 border border-red-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
+          />
+          <button
+            onclick="deleteAccount()"
+            class="w-full bg-red-700 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-semibold transition"
+          >
+            Supprimer mon compte
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      if (!token) window.location.href = "/login.html";
+
+      let allSports = [];
+      let allJeux = [];
+      let userSports = [];
+      let userJeux = [];
+      const { SPORT_LEVELS, GAME_LEVELS, getLevelForElo, getEloForLevel } =
+        window.RankUtils;
+
+      function buildLevelOptions(levels, selectedLabel) {
+        return levels
+          .map(
+            (level) =>
+              `<option value="${level.label}" ${level.label === selectedLabel ? "selected" : ""}>${level.label}</option>`,
+          )
+          .join("");
+      }
+
+      function fillLevelSelectors() {
+        document.getElementById("select-sport-level").innerHTML =
+          buildLevelOptions(SPORT_LEVELS, "Bronze");
+        document.getElementById("select-jeu-level").innerHTML =
+          buildLevelOptions(GAME_LEVELS, "Bronze");
+      }
+
+      function logout() {
+        localStorage.clear();
+        window.location.href = "/login.html";
+      }
+
+      function showToast(msg, success = true) {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.className =
+          "fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm font-semibold transition-all " +
+          (success ? "bg-green-700 text-white" : "bg-red-700 text-white");
+        t.classList.remove("hidden");
+        setTimeout(() => t.classList.add("hidden"), 3000);
+      }
+
+      async function api(method, path, body) {
+        const res = await fetch("/api/profil" + path, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        return res;
+      }
+
+      function renderSports() {
+        const container = document.getElementById("sports-list");
+        if (userSports.length === 0) {
+          container.innerHTML =
+            '<p class="text-gray-500 text-sm">Aucun sport renseigné</p>';
+        } else {
+          container.innerHTML = userSports
+            .map(
+              (s) =>
+                `<div class="flex flex-wrap items-center gap-2 bg-indigo-950/60 border border-indigo-900 text-indigo-100 text-xs font-semibold px-3 py-2 rounded-xl">
+              <span>${s.nom}</span>
+              <span class="text-indigo-300">${getLevelForElo("sport", s.elo)} (${s.elo} ELO)</span>
+              <select id="sport-level-${s.id}" class="bg-gray-900 border border-indigo-800 rounded-lg px-2 py-1 text-xs text-white">${buildLevelOptions(SPORT_LEVELS, getLevelForElo("sport", s.elo))}</select>
+              <button onclick="updateSportLevel(${s.id})" class="px-2 py-1 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition">Enregistrer</button>
+              <button onclick="removeSport(${s.id})" class="px-2 py-1 rounded-lg border border-indigo-800 hover:border-indigo-500 transition" title="Retirer">Retirer</button>
+            </div>`,
+            )
+            .join("");
+        }
+        const addedIds = userSports.map((s) => s.id);
+        const select = document.getElementById("select-sport");
+        select.innerHTML =
+          '<option value="">-- Choisir un sport --</option>' +
+          allSports
+            .filter((s) => !addedIds.includes(s.id))
+            .map((s) => `<option value="${s.id}">${s.nom}</option>`)
+            .join("");
+      }
+
+      function renderJeux() {
+        const container = document.getElementById("jeux-list");
+        if (userJeux.length === 0) {
+          container.innerHTML =
+            '<p class="text-gray-500 text-sm">Aucun jeu renseigné</p>';
+        } else {
+          container.innerHTML = userJeux
+            .map(
+              (j) =>
+                `<div class="flex flex-wrap items-center gap-2 bg-purple-950/60 border border-purple-900 text-purple-100 text-xs font-semibold px-3 py-2 rounded-xl">
+              <span>${j.nom}</span>
+              <span class="text-purple-300">${getLevelForElo("game", j.elo)} (${j.elo} ELO)</span>
+              <select id="jeu-level-${j.id}" class="bg-gray-900 border border-purple-800 rounded-lg px-2 py-1 text-xs text-white">${buildLevelOptions(GAME_LEVELS, getLevelForElo("game", j.elo))}</select>
+              <button onclick="updateJeuLevel(${j.id})" class="px-2 py-1 rounded-lg bg-purple-700 hover:bg-purple-600 text-white transition">Enregistrer</button>
+              <button onclick="removeJeu(${j.id})" class="px-2 py-1 rounded-lg border border-purple-800 hover:border-purple-500 transition" title="Retirer">Retirer</button>
+            </div>`,
+            )
+            .join("");
+        }
+        const addedIds = userJeux.map((j) => j.id);
+        const select = document.getElementById("select-jeu");
+        select.innerHTML =
+          '<option value="">-- Choisir un jeu --</option>' +
+          allJeux
+            .filter((j) => !addedIds.includes(j.id))
+            .map((j) => `<option value="${j.id}">${j.nom}</option>`)
+            .join("");
+      }
+
+      function updateAvatarPreview(avatarUrl) {
+        const avatarImg = document.getElementById("avatar-image");
+        const avatarFallback = document.getElementById("avatar");
+
+        if (avatarUrl) {
+          avatarImg.src = avatarUrl;
+          avatarImg.classList.remove("hidden");
+          avatarFallback.classList.add("hidden");
+        } else {
+          avatarImg.classList.add("hidden");
+          avatarFallback.classList.remove("hidden");
+        }
+      }
+
+      let selectedAvatarFile = null;
+
+      document
+        .getElementById("avatar-input")
+        .addEventListener("change", (event) => {
+          const file = event.target.files && event.target.files[0];
+          selectedAvatarFile = file || null;
+          const uploadBtn = document.getElementById("avatar-upload-btn");
+          const status = document.getElementById("avatar-status");
+
+          if (!file) {
+            uploadBtn.classList.add("hidden");
+            status.textContent = "";
+            return;
+          }
+
+          status.textContent = `Image sélectionnée : ${file.name}`;
+          uploadBtn.classList.remove("hidden");
+        });
+
+      async function uploadAvatar() {
+        const status = document.getElementById("avatar-status");
+        if (!selectedAvatarFile) {
+          status.textContent = "Choisis d’abord une image";
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("avatar", selectedAvatarFile);
+
+        try {
+          const res = await fetch("/api/profil/photo", {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + token,
+            },
+            body: formData,
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            showToast(data.message || "Upload impossible", false);
+            status.textContent = data.message || "Upload impossible";
+            return;
+          }
+
+          updateAvatarPreview(data.avatar_url);
+          showToast(data.message || "Photo enregistrée");
+          status.textContent = "Photo enregistrée";
+          document.getElementById("avatar-upload-btn").classList.add("hidden");
+          document.getElementById("avatar-input").value = "";
+          selectedAvatarFile = null;
+        } catch (error) {
+          showToast("Erreur réseau lors de l’upload", false);
+          status.textContent = "Erreur réseau lors de l’upload";
+        }
+      }
+
+      async function loadProfil() {
+        const [profilRes, sportsRes, jeuxRes] = await Promise.all([
+          api("GET", ""),
+          fetch("/api/sports"),
+          fetch("/api/jeux"),
+        ]);
+
+        if (!profilRes.ok) {
+          showToast("Erreur de chargement du profil", false);
+          return;
+        }
+
+        const data = await profilRes.json();
+        allSports = await sportsRes.json();
+        allJeux = await jeuxRes.json();
+        userSports = data.sports || [];
+        userJeux = data.jeux || [];
+        fillLevelSelectors();
+
+        document.getElementById("pseudo").textContent = data.pseudo;
+        document.getElementById("identite-display").textContent =
+          `${data.prenom || ""} ${data.nom || ""}`.trim();
+        document.getElementById("avatar").textContent = data.pseudo
+          .charAt(0)
+          .toUpperCase();
+        document.getElementById("localisation-display").textContent =
+          data.localisation || "Localisation non renseignée";
+        document.getElementById("email-display").textContent = data.email;
+        document.getElementById("input-pseudo").value = data.pseudo;
+        document.getElementById("input-nom").value = data.nom || "";
+        document.getElementById("input-prenom").value = data.prenom || "";
+        document.getElementById("input-localisation").value =
+          data.localisation || "";
+
+        updateAvatarPreview(data.avatar_url || "");
+
+        renderSports();
+        renderJeux();
+
+        const equipes = data.equipes || (data.equipe ? [data.equipe] : []);
+        if (equipes.length) {
+          document.getElementById("equipe-section").classList.remove("hidden");
+          document.getElementById("equipes-list").innerHTML = equipes
+            .map(
+              (equipe) => `
+              <div class="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+                <div>
+                  <p class="font-semibold">${equipe.nom}</p>
+                  <p class="text-gray-400 text-sm">${equipe.role === "capitaine" ? "Capitaine" : "Joueur"}</p>
+                </div>
+                ${equipe.role === "capitaine" ? "" : `<button onclick="quitterEquipe(${equipe.id})" class="text-sm text-orange-400 hover:text-orange-300 border border-orange-800 px-3 py-1.5 rounded-lg">Quitter</button>`}
+              </div>
+            `,
+            )
+            .join("");
+        } else {
+          document.getElementById("equipe-section").classList.add("hidden");
+        }
+      }
+
+      async function updatePseudo() {
+        const pseudo = document.getElementById("input-pseudo").value.trim();
+        const res = await api("PUT", "/pseudo", { pseudo });
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          document.getElementById("pseudo").textContent = pseudo;
+          document.getElementById("avatar").textContent = pseudo
+            .charAt(0)
+            .toUpperCase();
+        }
+      }
+
+      async function updateIdentity() {
+        const nom = document.getElementById("input-nom").value.trim();
+        const prenom = document.getElementById("input-prenom").value.trim();
+        const res = await api("PUT", "/identite", { nom, prenom });
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          document.getElementById("identite-display").textContent =
+            `${prenom} ${nom}`;
+        }
+      }
+
+      async function updateLocalisation() {
+        const localisation = document
+          .getElementById("input-localisation")
+          .value.trim();
+        const res = await api("PUT", "/localisation", { localisation });
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          document.getElementById("localisation-display").textContent =
+            localisation || "Localisation non renseignée";
+        }
+      }
+
+      async function updatePassword() {
+        const ancien = document.getElementById("input-ancien-mdp").value;
+        const nouveau = document.getElementById("input-nouveau-mdp").value;
+        const confirmer = document.getElementById("input-confirmer-mdp").value;
+        if (nouveau !== confirmer) {
+          showToast("Les mots de passe ne correspondent pas", false);
+          return;
+        }
+        const res = await api("PUT", "/password", {
+          ancien_mdp: ancien,
+          nouveau_mdp: nouveau,
+        });
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          document.getElementById("input-ancien-mdp").value = "";
+          document.getElementById("input-nouveau-mdp").value = "";
+          document.getElementById("input-confirmer-mdp").value = "";
+        }
+      }
+
+      async function addSport() {
+        const sportId = document.getElementById("select-sport").value;
+        const niveau = document.getElementById("select-sport-level").value;
+        if (!sportId) {
+          showToast("Sélectionne un sport", false);
+          return;
+        }
+        const res = await api("POST", "/sports", {
+          sport_id: parseInt(sportId),
+          niveau,
+        });
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          const sport = allSports.find((s) => s.id === parseInt(sportId));
+          userSports.push({
+            ...sport,
+            elo: data.elo ?? getEloForLevel("sport", niveau),
+            victoires: 0,
+            defaites: 0,
+          });
+          renderSports();
+        }
+      }
+
+      async function updateSportLevel(sportId) {
+        const niveau = document.getElementById(`sport-level-${sportId}`).value;
+        const res = await api("PUT", `/sports/${sportId}`, { niveau });
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          userSports = userSports.map((sport) =>
+            sport.id === sportId ? { ...sport, elo: data.elo } : sport,
+          );
+          renderSports();
+        }
+      }
+
+      async function removeSport(sportId) {
+        const res = await api("DELETE", "/sports/" + sportId);
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          userSports = userSports.filter((s) => s.id !== sportId);
+          renderSports();
+        }
+      }
+
+      async function addJeu() {
+        const jeuId = document.getElementById("select-jeu").value;
+        const niveau = document.getElementById("select-jeu-level").value;
+        if (!jeuId) {
+          showToast("Sélectionne un jeu", false);
+          return;
+        }
+        const res = await api("POST", "/jeux", {
+          jeu_id: parseInt(jeuId),
+          niveau,
+        });
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          const jeu = allJeux.find((j) => j.id === parseInt(jeuId));
+          userJeux.push({
+            ...jeu,
+            elo: data.elo ?? getEloForLevel("game", niveau),
+            victoires: 0,
+            defaites: 0,
+          });
+          renderJeux();
+        }
+      }
+
+      async function updateJeuLevel(jeuId) {
+        const niveau = document.getElementById(`jeu-level-${jeuId}`).value;
+        const res = await api("PUT", `/jeux/${jeuId}`, { niveau });
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          userJeux = userJeux.map((jeu) =>
+            jeu.id === jeuId ? { ...jeu, elo: data.elo } : jeu,
+          );
+          renderJeux();
+        }
+      }
+
+      async function removeJeu(jeuId) {
+        const res = await api("DELETE", "/jeux/" + jeuId);
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          userJeux = userJeux.filter((j) => j.id !== jeuId);
+          renderJeux();
+        }
+      }
+
+      async function quitterEquipe(equipeId) {
+        if (
+          !(await showConfirm(
+            "Êtes-vous sûr de vouloir quitter cette équipe ?",
+          ))
+        )
+          return;
+        const res = await api(
+          "DELETE",
+          equipeId ? `/equipe/${equipeId}` : "/equipe",
+        );
+        const data = await res.json();
+        showToast(data.message, res.ok);
+        if (res.ok) {
+          await loadProfil();
+        }
+      }
+
+      async function deleteAccount() {
+        const mdp = document.getElementById("input-delete-mdp").value;
+        if (!mdp) {
+          showToast("Entrez votre mot de passe pour confirmer", false);
+          return;
+        }
+        if (
+          !(await showConfirm(
+            "⚠️ Cette action est irréversible. Supprimer votre compte définitivement ?",
+          ))
+        )
+          return;
+        const res = await api("DELETE", "", { mot_de_passe: mdp });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.clear();
+          window.location.href = "/login.html";
+        } else {
+          showToast(data.message, false);
+        }
+      }
+
+      loadProfil();
+    </script>
+  </body>
+</html>
