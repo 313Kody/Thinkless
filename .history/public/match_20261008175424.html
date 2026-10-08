@@ -459,7 +459,7 @@
               <button
                 id="live-start-btn"
                 onclick="startLiveMatch()"
-                class="bg-emerald-600 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
               >
                 Lancer
               </button>
@@ -480,7 +480,7 @@
               <button
                 id="live-finish-btn"
                 onclick="finishLiveMatch()"
-                class="bg-red-700 hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+                class="bg-red-700 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
               >
                 Terminer le match
               </button>
@@ -986,7 +986,12 @@
         const isComplete =
           matchData.statut_match !== "en_cours" &&
           getLiveSeconds() >= getLiveDuration();
-        if (!isEliminationMatch() || !scoreIsTied || !isComplete) {
+        if (
+          !isEliminationMatch() ||
+          !scoreIsTied ||
+          !isComplete ||
+          phase === "prolongation"
+        ) {
           action.classList.add("hidden");
           action.replaceChildren();
           return;
@@ -995,13 +1000,8 @@
         button.type = "button";
         button.className =
           "w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500";
-        if (phase === "prolongation") {
-          button.textContent = "Tirs au but";
-          button.onclick = openShootout;
-        } else {
-          button.textContent = "Décider : prolongation ou forfait";
-          button.onclick = openFinalDecision;
-        }
+        button.textContent = "Décider : prolongation ou forfait";
+        button.onclick = openFinalDecision;
         action.replaceChildren(button);
         action.classList.remove("hidden");
       }

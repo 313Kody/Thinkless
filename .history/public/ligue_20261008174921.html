@@ -1033,19 +1033,6 @@
           </button>`;
       }
 
-      function renderBracketPreview(teamA, teamB, label) {
-        const renderTeam = (name, side) => `
-          <p class="flex items-center gap-2 truncate text-sm font-semibold ${name.startsWith("Vainqueur du quart") ? "text-gray-500 italic" : "text-emerald-300"}">
-            <span class="inline-flex shrink-0">${teamLogo(name, null, "w-7 h-7")}</span>
-            <span class="truncate">${name}</span>
-            <span class="ml-auto text-gray-600">-</span>
-          </p>${side === "A" ? '<div class="border-t border-gray-800 my-2"></div>' : ""}`;
-        return `<div class="w-full bg-gray-900/70 border border-dashed border-emerald-900 rounded-xl p-3">
-          <p class="mb-2 text-[11px] text-emerald-300">${label} · qualification en cours</p>
-          ${renderTeam(teamA, "A")}${renderTeam(teamB, "B")}
-        </div>`;
-      }
-
       async function loadBracket() {
         if (bracketLoading) return;
         bracketLoading = true;
@@ -1068,35 +1055,11 @@
           empty.classList.add("hidden");
           board.classList.remove("hidden");
           for (const phase of ["quart", "demi", "finale", "classement"]) {
-            const phaseMatches = knockout
-              .filter((match) => match.phase === phase)
-              .sort((first, second) => Number(first.id) - Number(second.id));
-            let renderedMatches = phaseMatches.map(renderBracketMatch).join("");
-            if (phase === "demi" && phaseMatches.length === 0) {
-              const quarterMatches = knockout
-                .filter((match) => match.phase === "quart")
-                .sort((first, second) => Number(first.id) - Number(second.id));
-              const quarterWinners = quarterMatches.map((match) => {
-                if (match.statut !== "termine") return null;
-                return match.vainqueur_equipe === "A"
-                  ? match.nom_equipe_a
-                  : match.vainqueur_equipe === "B"
-                    ? match.nom_equipe_b
-                    : null;
-              });
-              if (quarterWinners.some(Boolean)) {
-                renderedMatches = [0, 1]
-                  .map((semiIndex) => {
-                    const quarterIndex = semiIndex * 2;
-                    const teamA = quarterWinners[quarterIndex] || `Vainqueur du quart ${quarterIndex + 1}`;
-                    const teamB = quarterWinners[quarterIndex + 1] || `Vainqueur du quart ${quarterIndex + 2}`;
-                    return renderBracketPreview(teamA, teamB, `Demi-finale ${semiIndex + 1}`);
-                  })
-                  .join("");
-              }
-            }
             document.getElementById(`bracket-${phase}`).innerHTML =
-              renderedMatches ||
+              knockout
+                .filter((match) => match.phase === phase)
+                .map(renderBracketMatch)
+                .join("") ||
               '<p class="text-gray-600 text-sm">Pas encore généré</p>';
           }
         } catch (err) {

@@ -5,59 +5,20 @@ let liveMatchSchemaReady = null;
 
 async function ensureMatchStatsSchema(db) {
   if (!matchStatsSchemaReady) {
-    matchStatsSchemaReady = (async () => {
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS StatsJoueurMatch (
-          match_id INT UNSIGNED NOT NULL,
-          utilisateur_id INT UNSIGNED NOT NULL,
-          equipe ENUM('A','B') NOT NULL,
-          buts INT UNSIGNED NOT NULL DEFAULT 0,
-          passes_decisives INT UNSIGNED NOT NULL DEFAULT 0,
-          PRIMARY KEY (match_id, utilisateur_id),
-          CONSTRAINT fk_sjm_match FOREIGN KEY (match_id)
-            REFERENCES MatchSport(id) ON DELETE CASCADE,
-          CONSTRAINT fk_sjm_user FOREIGN KEY (utilisateur_id)
-            REFERENCES Utilisateur(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB
-      `);
-
-      const [columns] = await db.execute(
-        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'StatsJoueurMatch'
-           AND COLUMN_NAME = 'equipe'`,
-      );
-      if (!columns.length) {
-        await db.execute(
-          "ALTER TABLE StatsJoueurMatch ADD COLUMN equipe ENUM('A','B') NULL AFTER utilisateur_id",
-        );
-      }
-
-      const [indexes] = await db.execute(
-        `SELECT INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS indexed_columns
-         FROM INFORMATION_SCHEMA.STATISTICS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'StatsJoueurMatch'
-           AND NON_UNIQUE = 0
-         GROUP BY INDEX_NAME`,
-      );
-      const hasMatchPlayerKey = indexes.some(
-        (index) => index.indexed_columns === "match_id,utilisateur_id",
-      );
-      if (!hasMatchPlayerKey) {
-        const [duplicates] = await db.execute(
-          `SELECT 1 FROM StatsJoueurMatch
-           GROUP BY match_id, utilisateur_id
-           HAVING COUNT(*) > 1 LIMIT 1`,
-        );
-        if (duplicates.length) {
-          throw new Error(
-            "StatsJoueurMatch contient des doublons match/joueur ; migration unique impossible",
-          );
-        }
-        await db.execute(
-          "ALTER TABLE StatsJoueurMatch ADD UNIQUE KEY uq_sjm_match_user (match_id, utilisateur_id)",
-        );
-      }
-    })();
+    matchStatsSchemaReady = db.execute(`
+      CREATE TABLE IF NOT EXISTS StatsJoueurMatch (
+        match_id INT UNSIGNED NOT NULL,
+        utilisateur_id INT UNSIGNED NOT NULL,
+        equipe ENUM('A','B') NOT NULL,
+        buts INT UNSIGNED NOT NULL DEFAULT 0,
+        passes_decisives INT UNSIGNED NOT NULL DEFAULT 0,
+        PRIMARY KEY (match_id, utilisateur_id),
+        CONSTRAINT fk_sjm_match FOREIGN KEY (match_id)
+          REFERENCES MatchSport(id) ON DELETE CASCADE,
+        CONSTRAINT fk_sjm_user FOREIGN KEY (utilisateur_id)
+          REFERENCES Utilisateur(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB
+    `);
   }
   await matchStatsSchemaReady;
 }

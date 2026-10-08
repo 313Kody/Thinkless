@@ -5,59 +5,20 @@ let liveMatchSchemaReady = null;
 
 async function ensureMatchStatsSchema(db) {
   if (!matchStatsSchemaReady) {
-    matchStatsSchemaReady = (async () => {
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS StatsJoueurMatch (
-          match_id INT UNSIGNED NOT NULL,
-          utilisateur_id INT UNSIGNED NOT NULL,
-          equipe ENUM('A','B') NOT NULL,
-          buts INT UNSIGNED NOT NULL DEFAULT 0,
-          passes_decisives INT UNSIGNED NOT NULL DEFAULT 0,
-          PRIMARY KEY (match_id, utilisateur_id),
-          CONSTRAINT fk_sjm_match FOREIGN KEY (match_id)
-            REFERENCES MatchSport(id) ON DELETE CASCADE,
-          CONSTRAINT fk_sjm_user FOREIGN KEY (utilisateur_id)
-            REFERENCES Utilisateur(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB
-      `);
-
-      const [columns] = await db.execute(
-        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'StatsJoueurMatch'
-           AND COLUMN_NAME = 'equipe'`,
-      );
-      if (!columns.length) {
-        await db.execute(
-          "ALTER TABLE StatsJoueurMatch ADD COLUMN equipe ENUM('A','B') NULL AFTER utilisateur_id",
-        );
-      }
-
-      const [indexes] = await db.execute(
-        `SELECT INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS indexed_columns
-         FROM INFORMATION_SCHEMA.STATISTICS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'StatsJoueurMatch'
-           AND NON_UNIQUE = 0
-         GROUP BY INDEX_NAME`,
-      );
-      const hasMatchPlayerKey = indexes.some(
-        (index) => index.indexed_columns === "match_id,utilisateur_id",
-      );
-      if (!hasMatchPlayerKey) {
-        const [duplicates] = await db.execute(
-          `SELECT 1 FROM StatsJoueurMatch
-           GROUP BY match_id, utilisateur_id
-           HAVING COUNT(*) > 1 LIMIT 1`,
-        );
-        if (duplicates.length) {
-          throw new Error(
-            "StatsJoueurMatch contient des doublons match/joueur ; migration unique impossible",
-          );
-        }
-        await db.execute(
-          "ALTER TABLE StatsJoueurMatch ADD UNIQUE KEY uq_sjm_match_user (match_id, utilisateur_id)",
-        );
-      }
-    })();
+    matchStatsSchemaReady = db.execute(`
+      CREATE TABLE IF NOT EXISTS StatsJoueurMatch (
+        match_id INT UNSIGNED NOT NULL,
+        utilisateur_id INT UNSIGNED NOT NULL,
+        equipe ENUM('A','B') NOT NULL,
+        buts INT UNSIGNED NOT NULL DEFAULT 0,
+        passes_decisives INT UNSIGNED NOT NULL DEFAULT 0,
+        PRIMARY KEY (match_id, utilisateur_id),
+        CONSTRAINT fk_sjm_match FOREIGN KEY (match_id)
+          REFERENCES MatchSport(id) ON DELETE CASCADE,
+        CONSTRAINT fk_sjm_user FOREIGN KEY (utilisateur_id)
+          REFERENCES Utilisateur(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB
+    `);
   }
   await matchStatsSchemaReady;
 }
@@ -68,7 +29,7 @@ async function ensureLiveMatchSchema(db) {
       const [columns] = await db.execute(
         `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'MatchSport'
-           AND COLUMN_NAME IN ('chrono_secondes', 'chrono_demarre_le', 'chrono_duree_secondes', 'chrono_phase', 'chrono_temps_additionnel_secondes', 'chrono_prolongation_duree_secondes', 'tirs_au_but_a', 'tirs_au_but_b')`,
+           AND COLUMN_NAME IN ('chrono_secondes', 'chrono_demarre_le', 'chrono_duree_secondes', 'chrono_phase', 'chrono_temps_additionnel_secondes', 'chrono_prolongation_duree_secondes')`,
       );
       const names = new Set(columns.map((column) => column.COLUMN_NAME));
       if (!names.has("chrono_secondes")) {
@@ -101,16 +62,6 @@ async function ensureLiveMatchSchema(db) {
           "ALTER TABLE MatchSport ADD COLUMN chrono_prolongation_duree_secondes INT UNSIGNED NOT NULL DEFAULT 300",
         );
       }
-      if (!names.has("tirs_au_but_a")) {
-        await db.execute(
-          "ALTER TABLE MatchSport ADD COLUMN tirs_au_but_a TINYINT UNSIGNED NULL DEFAULT NULL",
-        );
-      }
-      if (!names.has("tirs_au_but_b")) {
-        await db.execute(
-          "ALTER TABLE MatchSport ADD COLUMN tirs_au_but_b TINYINT UNSIGNED NULL DEFAULT NULL",
-        );
-      }
     })();
   }
   await liveMatchSchemaReady;
@@ -136,12 +87,6 @@ function getLivePhaseDuration(match) {
   return (
     Number(match.chrono_duree_secondes || 480) +
     Number(match.chrono_temps_additionnel_secondes || 0)
-  );
-}
-
-function hasPendingBracketTeam(match) {
-  return [match.nom_equipe_a, match.nom_equipe_b].some((name) =>
-    /^Vainqueur (du quart|de la demi-finale) \d+$/.test(name || ""),
   );
 }
 
@@ -381,31 +326,27 @@ async function advanceKnockoutPhase(connection, match) {
     return null;
   }
 
-  const [sourceMatches] = await connection.execute(
-    `SELECT id, nom_equipe_a, nom_equipe_b, vainqueur_equipe, statut
+  const [currentMatches] = await connection.execute(
+    `SELECT id, nom_equipe_a, nom_equipe_b, score_equipe_a, score_equipe_b, vainqueur_equipe
      FROM MatchSport
-     WHERE ligue_id = ? AND phase = ?
+     WHERE ligue_id = ? AND phase = ? AND statut = 'termine'
      ORDER BY id ASC`,
     [match.ligue_id, match.phase],
   );
-  const expectedSources = match.phase === "quart" ? 4 : 2;
-  if (sourceMatches.length !== expectedSources) return null;
+  const expected = match.phase === "quart" ? 4 : 2;
+  if (currentMatches.length !== expected) return null;
 
   const nextPhase = match.phase === "quart" ? "demi" : "finale";
-  const [nextMatches] = await connection.execute(
-    `SELECT id, nom_equipe_a, nom_equipe_b, statut
-     FROM MatchSport
-     WHERE ligue_id = ? AND phase = ?
-     ORDER BY id ASC`,
+  const [existing] = await connection.execute(
+    "SELECT COUNT(*) AS total FROM MatchSport WHERE ligue_id = ? AND phase = ?",
     [match.ligue_id, nextPhase],
   );
-  const winners = sourceMatches.map((sourceMatch) =>
-    sourceMatch.statut === "termine" && sourceMatch.vainqueur_equipe === "A"
-      ? sourceMatch.nom_equipe_a
-      : sourceMatch.statut === "termine" &&
-          sourceMatch.vainqueur_equipe === "B"
-        ? sourceMatch.nom_equipe_b
-        : null,
+  if (Number(existing[0].total) > 0) return null;
+
+  const winners = currentMatches.map((currentMatch) =>
+    currentMatch.vainqueur_equipe === "A"
+      ? currentMatch.nom_equipe_a
+      : currentMatch.nom_equipe_b,
   );
   const pairs =
     nextPhase === "demi"
@@ -414,66 +355,25 @@ async function advanceKnockoutPhase(connection, match) {
           [winners[2], winners[3]],
         ]
       : [[winners[0], winners[1]]];
-  if (!winners.some(Boolean)) return null;
 
-  const pendingTeamLabel = (index) =>
-    match.phase === "quart"
-      ? `Vainqueur du quart ${index + 1}`
-      : `Vainqueur de la demi-finale ${index + 1}`;
-  const isPendingTeam = (name) =>
-    /^Vainqueur (du quart|de la demi-finale) \d+$/.test(name || "");
-
-  for (const [index, [winnerA, winnerB]] of pairs.entries()) {
-    const sourceIndexA = index * 2;
-    const sourceIndexB = sourceIndexA + 1;
-    const teamA = winnerA || pendingTeamLabel(sourceIndexA);
-    const teamB = winnerB || pendingTeamLabel(sourceIndexB);
-    const existing = nextMatches[index];
-
-    if (!existing) {
-      await connection.execute(
-        `INSERT INTO MatchSport (
-          sport_id, createur_id, ligue_id, titre, date_heure, localisation,
-          nb_joueurs_max, nb_equipe_a, nb_equipe_b, nom_equipe_a, nom_equipe_b,
-          statut, prive, phase, statut_match
-        ) VALUES (?, ?, ?, ?, NOW(), ?, 2, 1, 1, ?, ?, 'ouvert', 0, ?, 'programme')`,
-        [
-          match.sport_id,
-          match.createur_id,
-          match.ligue_id,
-          `${teamA} vs ${teamB}`,
-          match.localisation || null,
-          teamA,
-          teamB,
-          nextPhase,
-        ],
-      );
-      continue;
-    }
-
-    if (existing.statut === "termine") continue;
-    const updatedTeamA = winnerA && isPendingTeam(existing.nom_equipe_a)
-      ? winnerA
-      : existing.nom_equipe_a;
-    const updatedTeamB = winnerB && isPendingTeam(existing.nom_equipe_b)
-      ? winnerB
-      : existing.nom_equipe_b;
-    if (
-      updatedTeamA !== existing.nom_equipe_a ||
-      updatedTeamB !== existing.nom_equipe_b
-    ) {
-      await connection.execute(
-        `UPDATE MatchSport
-         SET nom_equipe_a = ?, nom_equipe_b = ?, titre = ?
-         WHERE id = ? AND statut <> 'termine'`,
-        [
-          updatedTeamA,
-          updatedTeamB,
-          `${updatedTeamA} vs ${updatedTeamB}`,
-          existing.id,
-        ],
-      );
-    }
+  for (const [teamA, teamB] of pairs) {
+    await connection.execute(
+      `INSERT INTO MatchSport (
+        sport_id, createur_id, ligue_id, titre, date_heure, localisation,
+        nb_joueurs_max, nb_equipe_a, nb_equipe_b, nom_equipe_a, nom_equipe_b,
+        statut, prive, phase, statut_match
+      ) VALUES (?, ?, ?, ?, NOW(), ?, 2, 1, 1, ?, ?, 'ouvert', 0, ?, 'programme')`,
+      [
+        match.sport_id,
+        match.createur_id,
+        match.ligue_id,
+        `${teamA} vs ${teamB}`,
+        match.localisation || null,
+        teamA,
+        teamB,
+        nextPhase,
+      ],
+    );
   }
 
   return nextPhase;
@@ -894,7 +794,6 @@ exports.getMatch = async (req, res) => {
       is_elimination: ["quart", "demi", "finale", "classement"].includes(
         match.phase,
       ),
-      equipes_determinees: !hasPendingBracketTeam(match),
       can_manage: canManage,
       can_join: canJoin,
       equipe_affiliee: equipeAffiliee,
@@ -1157,14 +1056,6 @@ exports.lancerMatchLive = async (req, res) => {
     if (!match) return res.status(404).json({ message: "Match introuvable" });
     if (!(await canManageLiveMatch(db, match, req.user.id))) {
       return res.status(403).json({ message: "Interdit" });
-    }
-    if (
-      ["quart", "demi", "finale", "classement"].includes(match.phase) &&
-      hasPendingBracketTeam(match)
-    ) {
-      return res.status(409).json({
-        message: "Ce match attend encore la qualification de ses deux équipes",
-      });
     }
     if (match.statut === "termine" || match.statut === "annule") {
       return res
@@ -1549,12 +1440,6 @@ exports.enregistrerResultat = async (req, res) => {
     const isKnockout = ["quart", "demi", "finale", "classement"].includes(
       match.phase,
     );
-    if (isKnockout && hasPendingBracketTeam(match)) {
-      await connection.rollback();
-      return res.status(409).json({
-        message: "Ce match attend encore la qualification de ses deux équipes",
-      });
-    }
     const forfeitWinner = req.body.vainqueur_forfait;
     const hasForfeit = ["A", "B"].includes(forfeitWinner);
     const confirmedDraw = req.body.terminer_match_nul === true;

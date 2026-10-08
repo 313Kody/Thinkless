@@ -440,7 +440,6 @@
               </div>
               <p class="text-xs text-gray-400 mt-1">Temps écoulé</p>
               <p id="live-phase" class="text-xs text-emerald-200 mt-2"></p>
-              <p id="live-pending-teams" class="hidden mt-2 max-w-xs text-xs text-amber-300">En attente de la qualification des deux équipes.</p>
             </div>
             <div class="md:border-x md:border-emerald-800/60 md:px-5">
               <p
@@ -459,7 +458,7 @@
               <button
                 id="live-start-btn"
                 onclick="startLiveMatch()"
-                class="bg-emerald-600 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
               >
                 Lancer
               </button>
@@ -480,7 +479,7 @@
               <button
                 id="live-finish-btn"
                 onclick="finishLiveMatch()"
-                class="bg-red-700 hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+                class="bg-red-700 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
               >
                 Terminer le match
               </button>
@@ -490,8 +489,8 @@
             id="live-added-time-controls"
             class="mt-4 flex justify-center gap-2 border-t border-emerald-900/70 pt-4"
           >
-            <button id="add-time-1-btn" type="button" onclick="addLiveAddedTime(1)" class="rounded-lg bg-sky-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-40">+1'</button>
-            <button id="add-time-2-btn" type="button" onclick="addLiveAddedTime(2)" class="rounded-lg bg-sky-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-40">+2'</button>
+            <button type="button" onclick="addLiveAddedTime(1)" class="rounded-lg bg-sky-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-40">+1'</button>
+            <button type="button" onclick="addLiveAddedTime(2)" class="rounded-lg bg-sky-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-40">+2'</button>
           </div>
           <div
             id="live-elimination-action"
@@ -820,9 +819,6 @@
       let liveFinishRequested = false;
       let liveAutoPauseRequested = false;
       let finalForfeitWinner = null;
-      let liveClockBaseSeconds = 0;
-      let liveClockBaseAt = null;
-      let liveTimeAdditionPending = false;
 
       function isEliminationMatch() {
         return Boolean(matchData.is_elimination);
@@ -850,34 +846,17 @@
           phaseLabels[phase] || "Temps réglementaire";
         document
           .getElementById("live-goals-controls")
-          .classList.toggle("hidden", matchData.equipes_determinees === false);
+          .classList.remove("hidden");
         clearInterval(liveTimer);
-        const running = matchData.statut_match === "en_cours";
-        liveClockBaseSeconds = Number(
-          matchData.chrono_secondes_live ?? matchData.chrono_secondes ?? 0,
-        );
-        liveClockBaseAt = running ? Date.now() : null;
         if (matchData.statut_match !== "en_cours") {
           liveAutoPauseRequested = false;
         }
-        const canAddTime =
-          running && phase === "temps_reglementaire" && !liveTimeAdditionPending;
-        document.getElementById("live-added-time-controls").classList.toggle(
-          "hidden",
-          phase !== "temps_reglementaire",
-        );
-        document.getElementById("add-time-1-btn").disabled = !canAddTime;
-        document.getElementById("add-time-2-btn").disabled = !canAddTime;
-        updateLiveAddedTimeDisplay();
         updateLiveClock();
         if (!liveAutoPauseRequested) {
           liveTimer = setInterval(updateLiveClock, 1000);
         }
+        const running = matchData.statut_match === "en_cours";
         const startButton = document.getElementById("live-start-btn");
-        const teamsReady = matchData.equipes_determinees !== false;
-        startButton.disabled = !teamsReady;
-        document.getElementById("live-finish-btn").disabled = !teamsReady;
-        document.getElementById("live-pending-teams").classList.toggle("hidden", teamsReady);
         startButton.classList.toggle("hidden", running);
         startButton.textContent =
           Number(matchData.chrono_secondes || 0) > 0 ? "Relancer" : "Lancer";
@@ -888,71 +867,27 @@
       }
 
       function getLiveSeconds() {
-        const runningSeconds =
-          matchData.statut_match === "en_cours" && liveClockBaseAt !== null
-            ? Math.max(0, Math.floor((Date.now() - liveClockBaseAt) / 1000))
-            : 0;
-        return liveClockBaseSeconds + runningSeconds;
+        let seconds = Number(matchData.chrono_secondes || 0);
+        if (
+          matchData.statut_match === "en_cours" &&
+          matchData.chrono_demarre_le
+        ) {
+          seconds += Math.max(
+            0,
+            Math.floor(
+              (Date.now() - new Date(matchData.chrono_demarre_le).getTime()) /
+                1000,
+            ),
+          );
+        }
+        return seconds;
       }
 
       function getLiveDuration() {
         const phase = matchData.chrono_phase || "temps_reglementaire";
         return phase === "prolongation"
           ? Number(matchData.chrono_prolongation_duree_secondes || 300)
-          : Number(matchData.chrono_duree_secondes || 480) +
-              Number(matchData.chrono_temps_additionnel_secondes || 0);
-      }
-
-      function updateLiveAddedTimeDisplay() {
-        const display = document.getElementById("live-added-time-display");
-        const addedSeconds = Number(
-          matchData.chrono_temps_additionnel_secondes || 0,
-        );
-        if (!display || addedSeconds <= 0) {
-          display?.classList.add("hidden");
-          return;
-        }
-        display.textContent = `+${Math.floor(addedSeconds / 60)}'`;
-        display.classList.remove("hidden");
-      }
-
-      async function addLiveAddedTime(minutes) {
-        if (liveTimeAdditionPending) return;
-        liveTimeAdditionPending = true;
-        document.getElementById("add-time-1-btn").disabled = true;
-        document.getElementById("add-time-2-btn").disabled = true;
-        try {
-          const res = await fetch(
-            `/api/matchs/${matchId}/live/temps-additionnel`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ minutes }),
-            },
-          );
-          const data = await res.json();
-          if (!res.ok) {
-            showAlert(data.message || "Impossible d'ajouter du temps");
-            return;
-          }
-          matchData.chrono_temps_additionnel_secondes =
-            data.chrono_temps_additionnel_secondes;
-          updateLiveAddedTimeDisplay();
-          updateLiveClock();
-          renderEliminationAction();
-        } catch (_error) {
-          showAlert("Erreur réseau lors de l'ajout du temps");
-        } finally {
-          liveTimeAdditionPending = false;
-          const canAddTime =
-            matchData.statut_match === "en_cours" &&
-            matchData.chrono_phase === "temps_reglementaire";
-          document.getElementById("add-time-1-btn").disabled = !canAddTime;
-          document.getElementById("add-time-2-btn").disabled = !canAddTime;
-        }
+          : Number(matchData.chrono_duree_secondes || 480);
       }
 
       function updateLiveClock() {
@@ -986,7 +921,12 @@
         const isComplete =
           matchData.statut_match !== "en_cours" &&
           getLiveSeconds() >= getLiveDuration();
-        if (!isEliminationMatch() || !scoreIsTied || !isComplete) {
+        if (
+          !isEliminationMatch() ||
+          !scoreIsTied ||
+          !isComplete ||
+          phase === "prolongation"
+        ) {
           action.classList.add("hidden");
           action.replaceChildren();
           return;
@@ -995,13 +935,8 @@
         button.type = "button";
         button.className =
           "w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500";
-        if (phase === "prolongation") {
-          button.textContent = "Tirs au but";
-          button.onclick = openShootout;
-        } else {
-          button.textContent = "Décider : prolongation ou forfait";
-          button.onclick = openFinalDecision;
-        }
+        button.textContent = "Décider : prolongation ou forfait";
+        button.onclick = openFinalDecision;
         action.replaceChildren(button);
         action.classList.remove("hidden");
       }

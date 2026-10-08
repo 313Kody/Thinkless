@@ -986,7 +986,12 @@
         const isComplete =
           matchData.statut_match !== "en_cours" &&
           getLiveSeconds() >= getLiveDuration();
-        if (!isEliminationMatch() || !scoreIsTied || !isComplete) {
+        if (
+          !isEliminationMatch() ||
+          !scoreIsTied ||
+          !isComplete ||
+          phase === "prolongation"
+        ) {
           action.classList.add("hidden");
           action.replaceChildren();
           return;
@@ -995,13 +1000,8 @@
         button.type = "button";
         button.className =
           "w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500";
-        if (phase === "prolongation") {
-          button.textContent = "Tirs au but";
-          button.onclick = openShootout;
-        } else {
-          button.textContent = "Décider : prolongation ou forfait";
-          button.onclick = openFinalDecision;
-        }
+        button.textContent = "Décider : prolongation ou forfait";
+        button.onclick = openFinalDecision;
         action.replaceChildren(button);
         action.classList.remove("hidden");
       }
