@@ -1016,8 +1016,11 @@ exports.deleteMatch = async (req, res) => {
     const db = getPool();
     const match = await getMatchAuthorizationContext(db, req.params.id);
     if (!match) return res.status(404).json({ message: "Match introuvable" });
-    if (!canManageMatch(match, req.user.id))
-      return res.status(403).json({ message: "Interdit" });
+    // Le créateur du match/de la ligue ET le staff de la ligue peuvent annuler
+    const autorise =
+      canManageMatch(match, req.user.id) ||
+      (await canManageLiveMatch(db, match, req.user.id));
+    if (!autorise) return res.status(403).json({ message: "Interdit" });
 
     await db.execute("UPDATE MatchSport SET statut='annule' WHERE id=?", [
       req.params.id,
@@ -1557,7 +1560,8 @@ exports.enregistrerResultat = async (req, res) => {
     }
     const forfeitWinner = req.body.vainqueur_forfait;
     const hasForfeit = ["A", "B"].includes(forfeitWinner);
-    const confirmedDraw = req.body.terminer_match_nul === true;
+    // Le match nul forcé n'est autorisé qu'hors phase finale
+    const confirmedDraw = req.body.terminer_match_nul === true && !isKnockout;
     const shootoutA = Number(req.body.tirs_au_but_a);
     const shootoutB = Number(req.body.tirs_au_but_b);
     const hasShootout =

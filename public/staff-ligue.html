@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gestion de la ligue – Thinkless</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 text-gray-100 min-h-screen">
+    <header class="bg-gray-900 border-b border-gray-800 px-4 py-4">
+      <div class="max-w-2xl mx-auto flex items-center justify-between">
+        <h1 class="text-xl font-bold text-amber-400">⚙️ Gestion de la ligue</h1>
+        <a id="retour" class="text-sm text-gray-300 hover:text-amber-400" href="#">← Dashboard</a>
+      </div>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <p id="message" class="hidden text-sm rounded-lg p-3"></p>
+
+      <form id="form" class="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-4">
+        <label class="block text-sm">Nom
+          <input name="nom" required maxlength="100" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-lg p-2" />
+        </label>
+        <label class="block text-sm">Description
+          <textarea name="description" rows="2" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-lg p-2"></textarea>
+        </label>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <label class="block text-sm">Lieu
+            <input name="lieu" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-lg p-2" />
+          </label>
+          <label class="block text-sm">Date de début
+            <input name="date_debut" type="datetime-local" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-lg p-2" />
+          </label>
+          <label class="block text-sm">Nombre de terrains
+            <input name="nb_terrains" type="number" min="1" max="50" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-lg p-2" />
+          </label>
+          <label class="block text-sm">Noms des terrains (séparés par des virgules)
+            <input name="terrains" placeholder="1, 2" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-lg p-2" />
+          </label>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <label class="block text-sm">Pts victoire
+            <input name="pts_victoire" type="number" min="0" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-lg p-2" />
+          </label>
+          <label class="block text-sm">Pts nul
+            <input name="pts_nul" type="number" min="0" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-lg p-2" />
+          </label>
+          <label class="block text-sm">Pts défaite
+            <input name="pts_defaite" type="number" min="0" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-lg p-2" />
+          </label>
+        </div>
+        <label class="flex items-center gap-2 text-sm">
+          <input name="publique" type="checkbox" /> Ligue publique
+        </label>
+        <button class="bg-amber-400 text-gray-900 font-bold rounded-lg px-4 py-2">Enregistrer</button>
+      </form>
+
+      <section id="danger" class="hidden bg-gray-900 border border-red-900 rounded-xl p-4">
+        <h2 class="font-bold text-red-400 mb-2">Zone dangereuse</h2>
+        <p class="text-sm text-gray-400 mb-3">Supprime la ligue, ses équipes et tous ses matchs. Irréversible (réservé au créateur).</p>
+        <button id="supprimer" class="border border-red-600 text-red-400 rounded-lg px-4 py-2 hover:bg-red-600 hover:text-white">Supprimer la ligue</button>
+      </section>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const ligueId = (location.pathname.match(/\/ligues\/(\d+)\//) || [])[1];
+      if (!token) location.href = "/login.html";
+      document.getElementById("retour").href = `/ligues/${ligueId}/dashboard`;
+      const form = document.getElementById("form");
+
+      function afficher(texte, ok) {
+        const el = document.getElementById("message");
+        el.textContent = texte;
+        el.className = `text-sm rounded-lg p-3 ${ok ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`;
+      }
+
+      async function api(method, body) {
+        const res = await fetch(`/api/ligues/${ligueId}`, {
+          method,
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          localStorage.clear();
+          location.href = "/login.html";
+        }
+        if (!res.ok) throw new Error(json.message || `Erreur ${res.status}`);
+        return json;
+      }
+
+      function parseTerrains(raw) {
+        try {
+          const arr = JSON.parse(raw || "[]");
+          return Array.isArray(arr) ? arr.join(", ") : "";
+        } catch {
+          return "";
+        }
+      }
+
+      async function charger() {
+        try {
+          const l = await api("GET");
+          if (!l.can_manage) return afficher("Accès réservé au staff.", false);
+          form.nom.value = l.nom || "";
+          form.description.value = l.description || "";
+          form.lieu.value = l.lieu || "";
+          form.date_debut.value = l.date_debut ? String(l.date_debut).replace(" ", "T").slice(0, 16) : "";
+          form.nb_terrains.value = l.nb_terrains || 1;
+          form.terrains.value = parseTerrains(l.terrains);
+          form.pts_victoire.value = l.pts_victoire ?? 3;
+          form.pts_nul.value = l.pts_nul ?? 1;
+          form.pts_defaite.value = l.pts_defaite ?? 0;
+          form.publique.checked = Number(l.publique) === 1;
+          if (Number(l.createur_id) === Number(user.id)) {
+            document.getElementById("danger").classList.remove("hidden");
+          }
+        } catch (e) {
+          afficher(e.message, false);
+        }
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try {
+          const terrains = form.terrains.value.split(",").map((t) => t.trim()).filter(Boolean);
+          await api("PUT", {
+            nom: form.nom.value,
+            description: form.description.value,
+            lieu: form.lieu.value,
+            date_debut: form.date_debut.value || null,
+            nb_terrains: Number(form.nb_terrains.value),
+            terrains,
+            pts_victoire: Number(form.pts_victoire.value),
+            pts_nul: Number(form.pts_nul.value),
+            pts_defaite: Number(form.pts_defaite.value),
+            publique: form.publique.checked,
+          });
+          afficher("Ligue mise à jour ✅", true);
+        } catch (err) {
+          afficher(err.message, false);
+        }
+      });
+
+      document.getElementById("supprimer").addEventListener("click", async () => {
+        if (!confirm("Supprimer définitivement cette ligue et tous ses matchs ?")) return;
+        try {
+          await api("DELETE");
+          location.href = "/ligues.html";
+        } catch (err) {
+          afficher(err.message, false);
+        }
+      });
+
+      charger();
+    </script>
+  </body>
+</html>

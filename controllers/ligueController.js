@@ -1,5 +1,6 @@
 const { getPool } = require("../config/db");
 const crypto = require("crypto");
+const { planifierRoundRobin } = require("../utils/calendrier");
 
 let staffColumnReady = null;
 let pouleColumnReady = null;
@@ -178,7 +179,10 @@ function shuffleTeams(teams) {
   const shuffled = [...teams];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const randomIndex = crypto.randomInt(index + 1);
-    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex]];
+    [shuffled[index], shuffled[randomIndex]] = [
+      shuffled[randomIndex],
+      shuffled[index],
+    ];
   }
   return shuffled;
 }
@@ -218,12 +222,14 @@ exports.getLigues = async (req, res) => {
     await ensureEventConfig(db);
     const { nom } = req.query;
 
-    let sql = `SELECT l.*, s.nom AS sport, u.pseudo AS createur,
+    let sql = `SELECT l.*, s.nom AS sport, j.nom AS jeu, u.pseudo AS createur,
               CASE WHEN mylu.utilisateur_id IS NULL THEN 0 ELSE 1 END AS suis,
               mylu.est_staff AS est_staff,
               COUNT(lu.utilisateur_id) AS nb_membres
        FROM Ligue l
-       JOIN Sport s        ON s.id = l.sport_id
+       -- Ces deux références sont optionnelles : une ligue peut être sportive ou e-sport.
+       LEFT JOIN Sport s     ON s.id = l.sport_id
+       LEFT JOIN JeuEsport j ON j.id = l.jeu_id
        JOIN Utilisateur u  ON u.id = l.createur_id
        LEFT JOIN LigueUtilisateur lu ON lu.ligue_id = l.id
        LEFT JOIN LigueUtilisateur mylu
@@ -517,15 +523,18 @@ exports.getEquipes = async (req, res) => {
     }
     const [rows] = await db.execute(
       `SELECT le.id, le.nom, le.poule, le.logo_url, le.created_at,
-              COUNT(DISTINCT lu.utilisateur_id) AS nb_joueurs,
+              COUNT(DISTINCT lu.utilisateur_id)
+                + (SELECT COUNT(*) FROM LigueJoueur lj WHERE lj.equipe_id = le.id) AS nb_joueurs,
               capitaine.pseudo AS capitaine_pseudo,
-              MAX(CASE WHEN lu.utilisateur_id = ? THEN 1 ELSE 0 END) AS est_mon_equipe
+              MAX(CASE WHEN lu.utilisateur_id = ? THEN 1 ELSE 0 END) AS est_mon_equipe,
+              ${access.canManage ? "le.code_acces" : "NULL"} AS code_acces,
+              ${access.canManage ? "(SELECT CONCAT(u2.prenom, ' ', u2.nom) FROM Utilisateur u2 WHERE u2.id = le.demande_capitaine_id)" : "NULL"} AS candidat_capitaine
        FROM LigueEquipe le
        LEFT JOIN LigueUtilisateur lu
          ON lu.ligue_id = le.ligue_id AND lu.equipe_id = le.id AND lu.est_staff = 0
       LEFT JOIN Utilisateur capitaine ON capitaine.id = le.capitaine_id
       WHERE le.ligue_id = ?
-      GROUP BY le.id, le.nom, le.poule, le.logo_url, le.created_at, capitaine.pseudo
+      GROUP BY le.id, le.nom, le.poule, le.logo_url, le.created_at, capitaine.pseudo, le.code_acces, le.demande_capitaine_id
        ORDER BY le.poule ASC, le.id ASC`,
       [req.user.id, req.params.id],
     );
@@ -566,15 +575,27 @@ exports.getEquipeLigue = async (req, res) => {
     if (!teams.length)
       return res.status(404).json({ message: "Équipe introuvable" });
 
-    const [joueurs] = await db.execute(
-      `SELECT u.id, u.nom, u.prenom, u.pseudo, u.avatar_url,
+    const [membres] = await db.execute(
+      `SELECT u.id, u.nom, u.prenom, u.pseudo, u.avatar_url, lu.numero,
               lu.statut, (u.id = le.capitaine_id) AS est_capitaine
        FROM LigueUtilisateur lu
        JOIN Utilisateur u ON u.id = lu.utilisateur_id
        JOIN LigueEquipe le ON le.id = lu.equipe_id
-       WHERE lu.ligue_id = ? AND lu.equipe_id = ? AND lu.est_staff = 0
-       ORDER BY est_capitaine DESC, u.pseudo ASC`,
+       WHERE lu.ligue_id = ? AND lu.equipe_id = ? AND lu.est_staff = 0`,
       [ligueId, equipeId],
+    );
+    // Joueurs sans compte (importés par le staff ou le capitaine)
+    const [ghosts] = await db.execute(
+      `SELECT NULL AS id, nom, NULL AS prenom, nom AS pseudo, NULL AS avatar_url,
+              numero, 'actif' AS statut, est_capitaine
+       FROM LigueJoueur WHERE ligue_id = ? AND equipe_id = ?`,
+      [ligueId, equipeId],
+    );
+    const joueurs = [...membres, ...ghosts].sort(
+      (a, b) =>
+        Number(b.est_capitaine) - Number(a.est_capitaine) ||
+        (a.numero ?? 999) - (b.numero ?? 999) ||
+        String(a.pseudo).localeCompare(String(b.pseudo)),
     );
     const [demandes] =
       access.canManage || Number(teams[0].capitaine_id) === Number(req.user.id)
@@ -989,25 +1010,33 @@ exports.genererCalendrier = async (req, res) => {
     const [existing] = await connection.execute(
       `SELECT nom_equipe_a, nom_equipe_b
        FROM MatchSport
-       WHERE ligue_id = ? AND phase = 'poule'`,
+       WHERE ligue_id = ? AND phase = 'poule' AND statut <> 'annule'`,
       [ligueId],
     );
+    // Les matchs annulés ne bloquent plus la régénération d'une affiche
     const existingPairs = new Set(
       existing.map((match) => `${match.nom_equipe_a}::${match.nom_equipe_b}`),
     );
 
-    const matchs = [];
-    for (const poule of ["A", "B"]) {
+    // Affiches manquantes pour toutes les poules présentes (pas seulement A/B)
+    const pairs = [];
+    const poulesNoms = [...new Set(equipes.map((equipe) => equipe.poule))];
+    for (const poule of poulesNoms) {
       const teams = equipes.filter((equipe) => equipe.poule === poule);
       for (let i = 0; i < teams.length; i += 1) {
         for (let j = i + 1; j < teams.length; j += 1) {
           const pairKey = `${teams[i].nom}::${teams[j].nom}`;
           if (!existingPairs.has(pairKey)) {
-            matchs.push([teams[i], teams[j], poule]);
+            pairs.push({ a: teams[i], b: teams[j], poule });
           }
         }
       }
     }
+    // Ordonnancement : aucune équipe ne joue deux matchs au même créneau
+    const matchs = planifierRoundRobin(
+      pairs.map((p) => ({ a: p.a.nom, b: p.b.nom, poule: p.poule, ref: p })),
+      terrainCount,
+    );
 
     if (matchs.length === 0) {
       await connection.rollback();
@@ -1017,12 +1046,12 @@ exports.genererCalendrier = async (req, res) => {
       });
     }
 
-    for (const [index, [equipeA, equipeB, poule]] of matchs.entries()) {
-      const slot = Math.floor(index / terrainCount);
+    for (const m of matchs) {
       const date = new Date(
-        startAt.getTime() + slot * (durationMinutes + rotationMinutes) * 60000,
+        startAt.getTime() +
+          m.slot * (durationMinutes + rotationMinutes) * 60000,
       );
-      const terrainId = (index % terrainCount) + 1;
+      const terrainId = m.terrain;
       await connection.execute(
         `INSERT INTO MatchSport (
           sport_id, createur_id, ligue_id, titre, date_heure, localisation,
@@ -1033,12 +1062,12 @@ exports.genererCalendrier = async (req, res) => {
           ligues[0].sport_id,
           req.user.id,
           ligueId,
-          `${equipeA.nom} vs ${equipeB.nom}`,
+          `${m.a} vs ${m.b}`,
           date,
           ligues[0].lieu || null,
-          equipeA.nom,
-          equipeB.nom,
-          poule,
+          m.a,
+          m.b,
+          m.poule,
           terrainId,
           getTerrainName(ligues[0].terrains, terrainId),
         ],
@@ -1082,11 +1111,55 @@ exports.verrouillerPoules = async (req, res) => {
       });
     }
 
+    // Verrouiller sans aucun match de poule n'aurait pas de sens
+    const [existing] = await db.execute(
+      "SELECT COUNT(*) AS total FROM MatchSport WHERE ligue_id = ? AND phase = 'poule' AND statut <> 'annule'",
+      [ligueId],
+    );
+    if (Number(existing[0].total) === 0) {
+      return res.status(409).json({
+        message: "Aucun match de poule : générez d'abord le calendrier",
+      });
+    }
+
     await db.execute("UPDATE Ligue SET poules_verrouillees = 1 WHERE id = ?", [
       ligueId,
     ]);
     res.json({ message: "Poules verrouillées" });
   } catch (err) {
+    console.error("Erreur verrouillerPoules :", err);
+    res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+// POST /api/ligues/:id/deverrouiller-poules
+// Réouvre les poules (déplacements d'équipes, nouveau calendrier) tant que la
+// phase finale n'a pas été générée.
+exports.deverrouillerPoules = async (req, res) => {
+  const db = getPool();
+  try {
+    await ensureStaffColumn(db);
+    const ligueId = Number(req.params.id);
+    const access = await getLeagueAccess(db, ligueId, req.user.id);
+    if (!access) return res.status(404).json({ message: "Ligue introuvable" });
+    if (!access.canManage) return res.status(403).json({ message: "Interdit" });
+
+    const [finale] = await db.execute(
+      "SELECT COUNT(*) AS total FROM MatchSport WHERE ligue_id = ? AND phase <> 'poule' AND statut <> 'annule'",
+      [ligueId],
+    );
+    if (Number(finale[0].total) > 0) {
+      return res.status(409).json({
+        message: "La phase finale existe déjà, impossible de déverrouiller",
+      });
+    }
+
+    await db.execute("UPDATE Ligue SET poules_verrouillees = 0 WHERE id = ?", [
+      ligueId,
+    ]);
+    res.json({ message: "Poules déverrouillées" });
+  } catch (err) {
+    console.error("Erreur deverrouillerPoules :", err);
     res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
 };
@@ -1463,6 +1536,7 @@ exports.getLigue = async (req, res) => {
     }
     ligue.can_manage = isCreator || isStaff;
     ligue.est_staff = isStaff;
+    ligue.mon_equipe_id = currentMember?.equipe_id || null;
     ligue.membres = membres.filter((membre) =>
       isOrganizationMember(membre, ligue),
     );
@@ -1516,6 +1590,120 @@ exports.getMatchsLigue = async (req, res) => {
     res.json(matchs);
   } catch (err) {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+// PUT /api/ligues/:id
+// Met à jour les réglages d'une ligue (créateur ou staff uniquement).
+// Seuls les champs fournis sont modifiés ; chaque valeur est validée.
+exports.updateLigue = async (req, res) => {
+  try {
+    const db = getPool();
+    await ensureEventConfig(db);
+    const ligueId = Number(req.params.id);
+    if (!Number.isInteger(ligueId) || ligueId < 1) {
+      return res.status(400).json({ message: "Identifiant invalide" });
+    }
+
+    const access = await getLeagueAccess(db, ligueId, req.user.id);
+    if (!access) return res.status(404).json({ message: "Ligue introuvable" });
+    if (!access.canManage) {
+      return res.status(403).json({ message: "Accès réservé au staff" });
+    }
+
+    const body = req.body || {};
+    const sets = [];
+    const values = [];
+    const add = (column, value) => {
+      sets.push(`${column} = ?`);
+      values.push(value);
+    };
+
+    if (body.nom !== undefined) {
+      const nom = String(body.nom).trim();
+      if (!nom || nom.length > 100) {
+        return res.status(400).json({ message: "Nom invalide" });
+      }
+      add("nom", nom);
+    }
+    if (body.description !== undefined) {
+      add("description", String(body.description).trim() || null);
+    }
+    if (body.lieu !== undefined) {
+      add("lieu", String(body.lieu).trim() || null);
+    }
+    if (body.date_debut !== undefined) {
+      add("date_debut", body.date_debut || null);
+    }
+    if (body.publique !== undefined) {
+      add("publique", body.publique ? 1 : 0);
+    }
+    if (body.nb_terrains !== undefined) {
+      const count = Number(body.nb_terrains);
+      if (!Number.isInteger(count) || count < 1 || count > 50) {
+        return res.status(400).json({ message: "Nombre de terrains invalide" });
+      }
+      add("nb_terrains", count);
+    }
+    if (body.terrains !== undefined) {
+      add(
+        "terrains",
+        Array.isArray(body.terrains)
+          ? JSON.stringify(body.terrains.map(String))
+          : String(body.terrains || "").trim() || null,
+      );
+    }
+    for (const field of ["pts_victoire", "pts_nul", "pts_defaite"]) {
+      if (body[field] !== undefined) {
+        const value = Number(body[field]);
+        if (!Number.isInteger(value) || value < 0 || value > 100) {
+          return res.status(400).json({ message: `${field} invalide` });
+        }
+        add(field, value);
+      }
+    }
+
+    if (sets.length === 0) {
+      return res.status(400).json({ message: "Aucune modification fournie" });
+    }
+
+    await db.execute(`UPDATE Ligue SET ${sets.join(", ")} WHERE id = ?`, [
+      ...values,
+      ligueId,
+    ]);
+    res.json({ message: "Ligue mise à jour" });
+  } catch (err) {
+    console.error("❌ Erreur updateLigue:", err.message);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+// DELETE /api/ligues/:id
+// Supprime définitivement la ligue (créateur uniquement). Les matchs sont
+// supprimés d'abord car leur clé étrangère vers Ligue n'est pas en CASCADE ;
+// équipes, membres et demandes partent en cascade.
+exports.deleteLigue = async (req, res) => {
+  try {
+    const db = getPool();
+    const ligueId = Number(req.params.id);
+    if (!Number.isInteger(ligueId) || ligueId < 1) {
+      return res.status(400).json({ message: "Identifiant invalide" });
+    }
+
+    const access = await getLeagueAccess(db, ligueId, req.user.id);
+    if (!access) return res.status(404).json({ message: "Ligue introuvable" });
+    if (!access.isCreator) {
+      return res
+        .status(403)
+        .json({ message: "Seul le créateur peut supprimer la ligue" });
+    }
+
+    await db.execute("DELETE FROM MatchSport WHERE ligue_id = ?", [ligueId]);
+    await db.execute("DELETE FROM Ligue WHERE id = ?", [ligueId]);
+    res.json({ message: "Ligue supprimée" });
+  } catch (err) {
+    console.error("❌ Erreur deleteLigue:", err.message);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
 

@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -8,6 +8,7 @@
     <script src="/rank-utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="/swal-utils.js"></script>
+    <script src="/qr-utils.js"></script>
   </head>
   <body class="bg-gray-950 min-h-screen text-white">
     <script>
@@ -87,78 +88,6 @@
             id="private-code-value"
             class="mt-3 font-mono text-lg text-amber-200 tracking-[0.3em]"
           ></p>
-        </div>
-        <div
-          id="creator-settings-card"
-          class="hidden mt-4 rounded-xl border border-indigo-800/60 bg-indigo-950/30 px-4 py-3"
-        >
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <p
-                class="text-xs uppercase tracking-wide text-indigo-300 font-semibold"
-              >
-                Paramètres organisateur
-              </p>
-              <p class="text-gray-400 text-sm mt-1">
-                Le code staff permet à l'équipe d'organisation d'accéder aux
-                fonctions de gestion.
-              </p>
-            </div>
-            <button
-              type="button"
-              onclick="toggleCreatorSettings()"
-              class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-            >
-              Paramètres
-            </button>
-          </div>
-          <div
-            id="creator-settings-content"
-            class="hidden mt-4 border-t border-indigo-900 pt-4"
-          >
-            <p class="text-gray-400 text-xs mb-2">
-              Code staff à transmettre uniquement aux organisateurs
-            </p>
-            <div class="flex items-center gap-3">
-              <p
-                id="staff-code-value"
-                class="font-mono text-lg tracking-[0.3em] text-indigo-200"
-              ></p>
-              <button
-                type="button"
-                onclick="copyStaffCode()"
-                class="bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold px-3 py-2 rounded-lg transition"
-              >
-                Copier
-              </button>
-            </div>
-            <p class="text-gray-500 text-xs mt-3">
-              Les autres paramètres de la ligue seront ajoutés ici.
-            </p>
-            <div class="flex flex-wrap gap-2 mt-4">
-              <button
-                type="button"
-                onclick="generateCalendar()"
-                class="bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold px-3 py-2 rounded-lg transition"
-              >
-                Tirer les poules et générer le calendrier
-              </button>
-              <button
-                type="button"
-                onclick="lockPoules()"
-                class="bg-amber-700 hover:bg-amber-600 text-white text-sm font-semibold px-3 py-2 rounded-lg transition"
-              >
-                Verrouiller les poules
-              </button>
-              <button
-                type="button"
-                onclick="generateFinalPhase()"
-                class="bg-rose-700 hover:bg-rose-600 text-white text-sm font-semibold px-3 py-2 rounded-lg transition"
-              >
-                Préparer la phase finale
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -364,23 +293,6 @@
           : `<div class="${size} rounded-lg bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-xs font-black shrink-0">${(name || "?").charAt(0).toUpperCase()}</div>`;
       }
 
-      function toggleCreatorSettings() {
-        document
-          .getElementById("creator-settings-content")
-          .classList.toggle("hidden");
-      }
-
-      async function copyStaffCode() {
-        const code = ligueData?.code_staff;
-        if (!code) return;
-        try {
-          await navigator.clipboard.writeText(code);
-          showAlert("Code staff copié dans le presse-papiers");
-        } catch {
-          showAlert(`Code staff : ${code}`);
-        }
-      }
-
       function switchTab(tab) {
         if (currentTab === tab) return;
 
@@ -436,7 +348,11 @@
           loadBracket();
           if (!bracketRefreshTimer) {
             bracketRefreshTimer = setInterval(() => {
-              if (document.visibilityState === "visible") loadBracket();
+              if (document.visibilityState === "visible") {
+                loadBracket();
+                loadMatchs();
+                loadClassement();
+              }
             }, 10000);
           }
         } catch (err) {
@@ -482,16 +398,6 @@
           document.getElementById("private-code-value").textContent = "";
         }
 
-        const settingsCard = document.getElementById("creator-settings-card");
-        if (l.can_manage && l.code_staff) {
-          settingsCard.classList.remove("hidden");
-          document.getElementById("staff-code-value").textContent =
-            l.code_staff;
-        } else {
-          settingsCard.classList.add("hidden");
-          document.getElementById("staff-code-value").textContent = "";
-        }
-
         // Statut
         const statut = document.getElementById("statut-ligue");
         if (l.publique) {
@@ -508,14 +414,39 @@
         const actions = document.getElementById("actions-ligue");
         actions.innerHTML = "";
 
-        if (isMember && canManage) {
-          const btnCreerMatch = document.createElement("button");
-          btnCreerMatch.onclick = () =>
-            (window.location.href = `/creer-match.html?ligue_id=${ligueId}`);
-          btnCreerMatch.className =
-            "bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition";
-          btnCreerMatch.textContent = "+ Match";
-          actions.appendChild(btnCreerMatch);
+        // Accès au dashboard staff (créateur/staff) et à la page live publique
+        if (canManage) {
+          const btnDashboard = document.createElement("a");
+          btnDashboard.href = `/ligues/${ligueId}/dashboard`;
+          btnDashboard.className =
+            "bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold text-sm px-4 py-2 rounded-lg transition text-center";
+          btnDashboard.textContent = "📊 Dashboard staff";
+          actions.appendChild(btnDashboard);
+        }
+        const btnLive = document.createElement("a");
+        btnLive.href = `/ligues/${ligueId}/live${ligueData.code_joueur && !ligueData.publique ? "?code=" + encodeURIComponent(ligueData.code_joueur) : ""}`;
+        btnLive.className =
+          "border border-gray-700 hover:border-amber-400 text-gray-200 text-sm px-4 py-2 rounded-lg transition text-center";
+        btnLive.textContent = "📺 Page live";
+        actions.appendChild(btnLive);
+
+        if (isMember && ligueData.mon_equipe_id) {
+          const btnQr = document.createElement("button");
+          btnQr.onclick = async () => {
+            const eq = (ligueData.equipes_ligue || []).find((t) => Number(t.id) === Number(ligueData.mon_equipe_id));
+            try {
+              const res = await fetch(`/api/ligues/${ligueId}/equipes/${ligueData.mon_equipe_id}/lien-rejoindre`, { headers: { Authorization: "Bearer " + token } });
+              const d = await res.json();
+              if (!res.ok) throw new Error(d.message || "Erreur");
+              showQr({ titre: eq?.nom || "Mon équipe", sousTitre: "Scanner pour rejoindre l'équipe", url: `${location.origin}${d.chemin}` });
+            } catch (e) {
+              alert(e.message);
+            }
+          };
+          btnQr.className =
+            "border border-gray-700 hover:border-amber-400 text-gray-200 text-sm px-4 py-2 rounded-lg transition";
+          btnQr.textContent = "📲 QR Code de l'équipe";
+          actions.appendChild(btnQr);
         }
 
         if (isMember) {
@@ -568,7 +499,6 @@
                   </div>
                   <div class="flex items-center gap-2">
                     <span class="bg-amber-900 text-amber-300 text-xs px-2 py-1 rounded">${m.role_ligue || "admin"}</span>
-                    ${ligueData.can_manage && Number(m.id) !== Number(ligueData.createur_id) ? `<select onchange="updateMemberRole(${m.id}, this.value)" class="bg-gray-800 border border-amber-800 text-xs rounded px-2 py-1"><option value="joueur">Joueur</option><option value="admin" ${m.role_ligue === "admin" ? "selected" : ""}>Admin</option><option value="arbitre" ${m.role_ligue === "arbitre" ? "selected" : ""}>Arbitre</option><option value="table_marque" ${m.role_ligue === "table_marque" ? "selected" : ""}>Table de marque</option><option value="speaker" ${m.role_ligue === "speaker" ? "selected" : ""}>Speaker</option><option value="dj" ${m.role_ligue === "dj" ? "selected" : ""}>DJ</option></select>` : ""}
                   </div>
                 </div>
               `,
@@ -596,7 +526,6 @@
                   </div>
                   <div class="flex flex-col items-end gap-2">
                     ${m.equipe_nom ? `<span class="text-gray-500 text-xs italic">${m.equipe_nom}${m.equipe_poule ? ` · poule ${m.equipe_poule}` : ""}</span>` : '<span class="text-gray-500 text-xs">Sans équipe</span>'}
-                    ${ligueData.can_manage ? `<select onchange="assignMemberTeam(${m.id}, this.value)" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs"><option value="">Affecter à une équipe</option>${(ligueData.equipes_ligue || []).map((team) => `<option value="${team.id}" ${Number(m.equipe_id) === Number(team.id) ? "selected" : ""}>${team.nom}</option>`).join("")}</select>` : ""}
                   </div>
                 </div>
               `,
@@ -810,60 +739,6 @@
         if (res.ok) {
           await loadEquipesLigue();
           await openLeagueTeam(teamId);
-        }
-      }
-
-      async function generatePoules() {
-        const res = await fetch(`/api/ligues/${ligueId}/generer-poules`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        showAlert(data.message || "Poules générées");
-        if (res.ok) {
-          await loadPoules();
-        }
-      }
-
-      async function generateCalendar() {
-        const res = await fetch(`/api/ligues/${ligueId}/generer-calendrier`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            start_at: "2026-10-24T12:10:00",
-            duration_minutes: 8,
-            rotation_minutes: 2,
-            terrain_count: 2,
-          }),
-        });
-        const data = await res.json();
-        showAlert(data.message || "Calendrier généré");
-        if (res.ok) await loadMatchs();
-      }
-
-      async function lockPoules() {
-        const res = await fetch(`/api/ligues/${ligueId}/verrouiller-poules`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        showAlert(data.message || "Action terminée");
-        if (res.ok) await loadLigue();
-      }
-
-      async function generateFinalPhase() {
-        const res = await fetch(`/api/ligues/${ligueId}/generer-phase-finale`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        showAlert(data.message || "Action terminée");
-        if (res.ok) {
-          await loadMatchs();
-          await loadBracket();
         }
       }
 

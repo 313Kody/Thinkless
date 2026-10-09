@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Live – Thinkless</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-950 text-gray-100 min-h-screen">
+    <header class="bg-gray-900 border-b border-gray-800 px-4 py-4">
+      <div class="max-w-3xl mx-auto">
+        <a id="retour-ligue" class="inline-block text-xs text-gray-400 hover:text-amber-400 mb-2" href="#">← Retour à la ligue</a>
+        <h1 id="ligue-nom" class="text-xl sm:text-2xl font-bold text-amber-400">Chargement…</h1>
+        <p id="ligue-infos" class="text-sm text-gray-400 mt-1"></p>
+        <div id="terrain-badges" class="flex flex-wrap gap-2 mt-3"></div>
+        <div id="live-status" class="mt-3 text-sm font-semibold"></div>
+      </div>
+    </header>
+
+    <nav class="sticky top-0 z-10 bg-gray-950 border-b border-gray-800">
+      <div class="max-w-3xl mx-auto grid grid-cols-3 text-center text-xs sm:text-sm">
+        <button data-tab="planning" class="tab-btn py-3 font-semibold">Planning &amp; Matchs</button>
+        <button data-tab="classement" class="tab-btn py-3 font-semibold">Classement</button>
+        <button data-tab="stats" class="tab-btn py-3 font-semibold">Stats / Trophées</button>
+      </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-3 py-4">
+      <p id="erreur" class="hidden mb-3 text-sm text-red-400"></p>
+
+      <section id="tab-planning">
+        <div id="filtres" class="flex flex-wrap gap-2 mb-4"></div>
+        <div id="matchs" class="space-y-3"></div>
+      </section>
+
+      <section id="tab-classement" class="hidden">
+        <div id="classement"></div>
+      </section>
+
+      <section id="tab-stats" class="hidden space-y-6">
+        <div>
+          <h2 class="font-bold text-amber-400 mb-2">⚽ Meilleur buteur</h2>
+          <div id="buteurs" class="space-y-2"></div>
+        </div>
+        <div>
+          <h2 class="font-bold text-amber-400 mb-2">🎯 Meilleur passeur</h2>
+          <div id="passeurs" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <p id="maj" class="text-center text-xs text-gray-600 mt-6"></p>
+    </main>
+
+    <script>
+      const POLL_MS = 20000;
+      const ligueId = (location.pathname.match(/\/ligues\/(\d+)\/live/) || [])[1];
+      let data = null;
+      let tab = "planning";
+      let terrainFiltre = "all";
+      if (ligueId) document.getElementById("retour-ligue").href = `/ligue.html?id=${ligueId}`;
+
+      const esc = (v) =>
+        String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const hhmm = (d) => {
+        const m = String(d || "").match(/(\d{2}):(\d{2})/);
+        return m ? `${m[1]}h${m[2]}` : "--";
+      };
+      const safeLogo = (u) => (u && /^\/uploads\/[\w\-./]+$/.test(u) ? u : null);
+
+      function logo(team) {
+        const src = safeLogo(team.logo_url);
+        return src
+          ? `<img src="${esc(src)}" alt="" class="w-10 h-10 rounded-full object-cover bg-gray-800" />`
+          : `<div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-sm font-bold text-amber-400">${esc((team.nom || "?").charAt(0).toUpperCase())}</div>`;
+      }
+
+      const BADGES = {
+        en_cours: ["En cours", "bg-red-600 text-white animate-pulse"],
+        a_venir: ["À venir", "bg-gray-700 text-gray-200"],
+        termine: ["Terminé", "bg-green-700 text-white"],
+      };
+
+      function renderHeader() {
+        const l = data.ligue;
+        document.title = `Live – ${l.nom}`;
+        document.getElementById("ligue-nom").textContent = l.nom;
+        const heures = data.matchs.map((m) => hhmm(m.date_heure)).filter((h) => h !== "--");
+        const plage = heures.length ? `${heures[0]} → ${heures[heures.length - 1]}` : "";
+        document.getElementById("ligue-infos").textContent = [l.lieu, plage].filter(Boolean).join(" • ");
+        document.getElementById("terrain-badges").innerHTML = data.terrains
+          .map((t) => `<span class="px-2 py-1 rounded-full bg-amber-700/30 border border-amber-700 text-amber-300 text-xs">${esc(t.nom)}</span>`)
+          .join("");
+        const live = data.matchs.filter((m) => m.statut === "en_cours");
+        const el = document.getElementById("live-status");
+        if (live.length) {
+          el.className = "mt-3 text-sm font-semibold text-red-400";
+          el.textContent = `🔴 Match en cours : ${live.map((m) => hhmm(m.date_heure)).join(" / ")}`;
+        } else {
+          const next = data.matchs.find((m) => m.statut === "a_venir");
+          el.className = "mt-3 text-sm font-semibold text-gray-400";
+          el.textContent = next ? `Prochain match : ${hhmm(next.date_heure)}` : "Aucun match en cours";
+        }
+      }
+
+      function renderFiltres() {
+        const opts = [{ id: "all", nom: "Tous" }, ...data.terrains];
+        document.getElementById("filtres").innerHTML = opts
+          .map((t) => `<button data-terrain="${esc(t.id)}" class="px-3 py-1 rounded-full text-xs border ${String(t.id) === String(terrainFiltre) ? "bg-amber-400 text-gray-900 border-amber-400" : "border-gray-700 text-gray-300"}">${esc(t.nom)}</button>`)
+          .join("");
+      }
+
+      function renderMatchs() {
+        const list = data.matchs.filter((m) => terrainFiltre === "all" || String(m.terrain.id) === String(terrainFiltre));
+        document.getElementById("matchs").innerHTML = list.length
+          ? list.map((m) => {
+              const [label, cls] = BADGES[m.statut];
+              const centre = m.statut === "a_venir"
+                ? `<span class="text-lg font-bold text-amber-400">${hhmm(m.date_heure)}</span>`
+                : `<span class="text-2xl font-extrabold">${m.score_a} - ${m.score_b}</span>`;
+              const minute = m.statut === "en_cours" && m.chrono_ecoule != null
+                ? `<div class="text-xs text-red-400">${Math.floor(m.chrono_ecoule / 60)}'</div>` : "";
+              const tab = m.tirs_au_but ? `<div class="text-xs text-gray-400">t.a.b. ${m.tirs_au_but.a}-${m.tirs_au_but.b}</div>` : "";
+              return `<article class="bg-gray-900 border border-gray-800 rounded-xl p-3">
+                <div class="flex justify-between items-center text-xs text-gray-400 mb-2">
+                  <span>${hhmm(m.date_heure)} • ${esc(m.terrain.nom)}${m.poule ? " • Poule " + esc(m.poule) : ""}</span>
+                  <span class="px-2 py-0.5 rounded-full font-semibold ${cls}">${label}</span>
+                </div>
+                <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <div class="flex flex-col items-center text-center gap-1">${logo(m.equipe_a)}<span class="text-sm font-semibold break-words">${esc(m.equipe_a.nom)}</span></div>
+                  <div class="text-center">${centre}${minute}${tab}</div>
+                  <div class="flex flex-col items-center text-center gap-1">${logo(m.equipe_b)}<span class="text-sm font-semibold break-words">${esc(m.equipe_b.nom)}</span></div>
+                </div>
+              </article>`;
+            }).join("")
+          : `<p class="text-gray-500 text-sm">Aucun match.</p>`;
+      }
+
+      function renderClassement() {
+        const rows = data.classement;
+        document.getElementById("classement").innerHTML = rows.length
+          ? `<div class="overflow-x-auto"><table class="w-full text-sm">
+              <thead class="text-gray-400 text-xs"><tr><th class="text-left py-2">#</th><th class="text-left">Équipe</th><th>Pts</th><th>J</th><th>Diff</th></tr></thead>
+              <tbody>${rows.map((r) => `<tr class="border-t border-gray-800">
+                <td class="py-2 text-gray-400">${r.rang}</td>
+                <td class="font-semibold">${esc(r.nom)}${r.poule ? ` <span class="text-xs text-gray-500">(${esc(r.poule)})</span>` : ""}</td>
+                <td class="text-center font-bold text-amber-400">${r.points}</td>
+                <td class="text-center">${r.joues}</td>
+                <td class="text-center">${r.difference_buts > 0 ? "+" : ""}${r.difference_buts}</td></tr>`).join("")}</tbody></table></div>`
+          : `<p class="text-gray-500 text-sm">Classement indisponible.</p>`;
+      }
+
+      function renderStats() {
+        const line = (p, key, i) => `<div class="bg-gray-900 border border-gray-800 rounded-xl p-3 flex items-center justify-between">
+          <div><span class="text-gray-500 mr-2">${i + 1}.</span><span class="font-semibold">${esc(p.pseudo)}</span>
+          <span class="text-xs text-gray-400"> • ${esc(p.equipe)}${p.numero != null ? " • n°" + esc(p.numero) : ""}</span></div>
+          <span class="text-xl font-bold text-amber-400">${p[key]}</span></div>`;
+        const fill = (id, list, key) => {
+          document.getElementById(id).innerHTML = list.length
+            ? list.map((p, i) => line(p, key, i)).join("")
+            : `<p class="text-gray-500 text-sm">Pas encore de statistiques.</p>`;
+        };
+        fill("buteurs", data.stats.buteurs, "buts");
+        fill("passeurs", data.stats.passeurs, "passes");
+      }
+
+      function renderTabs() {
+        document.querySelectorAll(".tab-btn").forEach((b) => {
+          const on = b.dataset.tab === tab;
+          b.className = `tab-btn py-3 font-semibold border-b-2 ${on ? "border-amber-400 text-amber-400" : "border-transparent text-gray-400"}`;
+        });
+        ["planning", "classement", "stats"].forEach((t) =>
+          document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab));
+      }
+
+      function render() {
+        if (!data) return;
+        renderHeader();
+        renderFiltres();
+        renderMatchs();
+        renderClassement();
+        renderStats();
+        renderTabs();
+        document.getElementById("maj").textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR");
+      }
+
+      async function load() {
+        const err = document.getElementById("erreur");
+        try {
+          const code = new URLSearchParams(location.search).get("code");
+          const res = await fetch(`/api/ligues/${ligueId}/live-data${code ? "?code=" + encodeURIComponent(code) : ""}`, { cache: "no-store" });
+          if (!res.ok) throw new Error(res.status === 404 ? "Ligue introuvable" : res.status === 403 ? "Code de ligue requis (lien privé)" : "Erreur serveur");
+          data = await res.json();
+          err.classList.add("hidden");
+          render();
+        } catch (e) {
+          err.textContent = data ? "Connexion instable, nouvel essai…" : e.message;
+          err.classList.remove("hidden");
+          if (!data) document.getElementById("ligue-nom").textContent = "Live indisponible";
+        }
+      }
+
+      document.querySelector("nav").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-tab]");
+        if (b) { tab = b.dataset.tab; renderTabs(); }
+      });
+      document.getElementById("filtres").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-terrain]");
+        if (b) { terrainFiltre = b.dataset.terrain; renderFiltres(); renderMatchs(); }
+      });
+
+      renderTabs();
+      if (ligueId) {
+        load();
+        setInterval(() => { if (!document.hidden) load(); }, POLL_MS);
+        document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+      } else {
+        document.getElementById("ligue-nom").textContent = "Ligue introuvable";
+      }
+    </script>
+  </body>
+</html>

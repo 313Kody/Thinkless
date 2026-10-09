@@ -77,6 +77,75 @@ exports.register = async (req, res) => {
   }
 };
 
+// ---- Connexion simplifiée des capitaines (code d'équipe / magic link) ----
+const CAPITAINE_TOKEN_DUREE = "24h";
+const TENTATIVES_MAX = 10;
+const FENETRE_MS = 10 * 60 * 1000;
+const tentatives = new Map();
+
+// Limiteur en mémoire par IP pour freiner le brute-force des codes
+function tentativesAutorisees(ip) {
+  const maintenant = Date.now();
+  const entree = tentatives.get(ip);
+  if (!entree || maintenant - entree.debut > FENETRE_MS) {
+    tentatives.set(ip, { debut: maintenant, total: 1 });
+    return true;
+  }
+  entree.total += 1;
+  return entree.total <= TENTATIVES_MAX;
+}
+
+// Vérifie un code et signe un JWT limité à l'équipe concernée
+async function ouvrirSessionCapitaine(codeBrut) {
+  const code = String(codeBrut || "")
+    .trim()
+    .toUpperCase();
+  if (!/^[A-Z0-9]{4,10}$/.test(code)) return null;
+  const db = getPool();
+  await require("../utils/schema").ensureSchema(db);
+  const [rows] = await db.execute(
+    `SELECT le.id, le.nom, le.ligue_id, le.code_acces
+     FROM LigueEquipe le WHERE le.code_acces = ? LIMIT 1`,
+    [code],
+  );
+  if (!rows.length) return null;
+  const equipe = rows[0];
+  const token = jwt.sign(
+    {
+      role: "capitaine",
+      equipe_id: equipe.id,
+      ligue_id: equipe.ligue_id,
+      c: equipe.code_acces,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: CAPITAINE_TOKEN_DUREE },
+  );
+  return { token, equipe };
+}
+exports.ouvrirSessionCapitaine = ouvrirSessionCapitaine;
+exports.tentativesAutorisees = tentativesAutorisees;
+
+// POST /api/capitaine/login-code
+exports.loginCapitaine = async (req, res) => {
+  try {
+    if (!tentativesAutorisees(req.ip)) {
+      return res
+        .status(429)
+        .json({ message: "Trop de tentatives, réessayez dans quelques minutes" });
+    }
+    const session = await ouvrirSessionCapitaine(req.body?.code_acces);
+    if (!session) return res.status(401).json({ message: "Code invalide" });
+    res.json({
+      message: "Connecté en tant que capitaine",
+      token: session.token,
+      equipe: { id: session.equipe.id, nom: session.equipe.nom },
+    });
+  } catch (err) {
+    console.error("Erreur loginCapitaine :", err);
+    res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
 exports.login = async (req, res) => {
   try {
     const { email, mot_de_passe } = req.body;

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : thinkless-db
--- Généré le : mar. 22 sep. 2026 à 08:58
+-- Généré le : jeu. 08 oct. 2026 à 19:30
 -- Version du serveur : 8.0.45
 -- Version de PHP : 8.3.30
 
@@ -41,7 +41,8 @@ CREATE TABLE `EquipeDemande` (
 --
 
 INSERT INTO `EquipeDemande` (`id`, `equipe_id`, `utilisateur_id`, `statut`, `created_at`, `decided_at`) VALUES
-(1, 1, 1, 'acceptee', '2026-04-02 18:53:36', '2026-04-02 18:56:00');
+(1, 1, 1, 'acceptee', '2026-04-02 18:53:36', '2026-04-02 18:56:00'),
+(2, 2, 9, 'acceptee', '2026-09-23 12:53:47', '2026-09-23 14:43:36');
 
 -- --------------------------------------------------------
 
@@ -85,7 +86,8 @@ CREATE TABLE `EquipeMembre` (
 INSERT INTO `EquipeMembre` (`equipe_id`, `utilisateur_id`, `role`, `rejoint_le`) VALUES
 (1, 1, 'joueur', '2026-04-02 18:56:00'),
 (1, 7, 'capitaine', '2026-04-02 18:27:46'),
-(2, 8, 'capitaine', '2026-04-02 19:39:30');
+(2, 8, 'capitaine', '2026-04-02 19:39:30'),
+(2, 9, 'joueur', '2026-09-23 14:43:36');
 
 -- --------------------------------------------------------
 
@@ -140,7 +142,7 @@ CREATE TABLE `Ligue` (
   `createur_joueur` tinyint(1) DEFAULT '0',
   `lieu` varchar(255) DEFAULT NULL,
   `date_debut` datetime DEFAULT NULL,
-  `nb_terrains` int unsigned NOT NULL DEFAULT '1',
+  `nb_terrains` int UNSIGNED NOT NULL DEFAULT '1',
   `terrains` text
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -151,9 +153,14 @@ CREATE TABLE `Ligue` (
 INSERT INTO `Ligue` (`id`, `sport_id`, `jeu_id`, `createur_id`, `nom`, `description`, `publique`, `created_at`, `nb_equipe`, `slots_par_equipe`, `code_acces`, `type_evenement`, `a_poules`, `nb_poules`, `pts_victoire`, `pts_nul`, `pts_defaite`, `code_staff`, `poules_verrouillees`, `createur_joueur`, `lieu`, `date_debut`, `nb_terrains`, `terrains`) VALUES
 (1, 2, NULL, 7, 'Championnat SIO Ile-de-France', 'Un championnat de BTS SIO au basket, celui qui remporte le championnat gagne une alternance !', 0, '2026-04-02 02:11:09', 2, 5, NULL, 'unique', 1, 2, 3, 1, 0, NULL, 0, 0, NULL, NULL, 1, NULL),
 (2, 1, NULL, 7, 'Championnat SIO Ile-de-France', 'Une Ligue 100% de football entre tous les BTS SIO d\'île-de-France, venez vous défier pour tenter de remporter un voyage au ski', 0, '2026-04-02 02:56:45', 10, 8, 'J1TQAL55', 'unique', 1, 2, 3, 1, 0, NULL, 0, 0, NULL, NULL, 1, NULL),
-(3, 3, NULL, 7, 'Ligue de Tennis entre SIO', 'Une Ligue 100% de Tennis entre tous les BTS SIO d\'île-de-France, venez vous défier pour tenter de remporter une alternance !', 1, '2026-04-02 03:18:07', 1, 1, NULL, 'unique', 1, 2, 3, 1, 0, NULL, 0, 0, NULL, NULL, 1, NULL),
+(3, 3, NULL, 7, 'Ligue de Tennis entre SIO', 'Une Ligue 100% de Tennis entre tous les BTS SIO d\'île-de-France, venez vous défier pour tenter de remporter une alternance !', 1, '2026-04-02 03:18:07', 1, 1, NULL, 'unique', 1, 2, 3, 1, 0, '41855C32', 0, 0, NULL, NULL, 1, NULL),
 (4, NULL, 2, 7, 'valo ligue', 'sio', 0, '2026-04-02 19:38:06', 5, 5, 'DHUOWD6A', 'unique', 1, 2, 3, 1, 0, NULL, 0, 0, NULL, NULL, 1, NULL),
-(5, 1, NULL, 7, '94 City\'s Cup', NULL, 0, '2026-09-22 08:04:54', 9, 6, '2JTRQOQF', 'unique', 1, 2, 3, 1, 0, NULL, 0, 0, 'Urban Soccer Ivry', '2026-10-24 12:00:00', 2, '[1,2]');
+(5, 1, NULL, 7, '94 City\'s Cup', NULL, 0, '2026-09-22 08:04:54', 9, 6, '2JTRQOQF', 'unique', 1, 2, 3, 1, 0, 'DC4C0A6F', 1, 0, 'Urban Soccer Ivry', '2026-10-24 12:00:00', 2, '[1,2]'),
+(6, 1, NULL, 7, 'Ligue de Test — Tournoi Caritatif (Dev & Demo)', 'Ligue de démonstration et de test pour la validation du système de tournoi caritatif (94 City’s Cup).\n\n🧪 Objectifs des tests :\n\nInscription des joueurs et activation des rôles Staff / Arbitre.\nRépartition automatique/manuelle des 9 équipes en poules.\nSaisie des scores en live et calcul dynamique du classement.\nSuivi de la cagnotte et de la maraude.', 0, '2026-09-22 09:55:58', 2, 5, NULL, 'unique', 1, 2, 3, 1, 0, 'STAFF-C44B5AAE', 0, 0, NULL, NULL, 1, NULL),
+(7, 1, NULL, 7, 'tzrt', 'tset', 0, '2026-09-22 10:06:42', 2, 5, NULL, 'unique', 1, 2, 3, 1, 0, 'STAFF-D701C887', 0, 1, NULL, NULL, 1, NULL),
+(8, 1, NULL, 7, 'Harvent', 're', 0, '2026-09-22 10:15:23', 2, 5, 'SI7X6N2X', 'unique', 1, 2, 3, 1, 0, 'F10A3688', 0, 0, NULL, NULL, 1, NULL),
+(9, 1, NULL, 7, 'EPHESTION', NULL, 0, '2026-09-22 10:16:28', 2, 5, 'XU7YP3MZ', 'unique', 1, 2, 3, 1, 0, '35BDF374', 0, 0, NULL, NULL, 1, NULL),
+(10, 1, NULL, 7, 'sf', NULL, 0, '2026-09-22 11:27:37', 22, 24, 'EWW87NH9', 'differe', 1, 5, 3, 1, 0, '4F8BFC07', 0, 0, NULL, NULL, 1, '[\"1\"]');
 
 -- --------------------------------------------------------
 
@@ -165,66 +172,82 @@ CREATE TABLE `LigueEquipe` (
   `id` int UNSIGNED NOT NULL,
   `ligue_id` int UNSIGNED NOT NULL,
   `nom` varchar(100) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `poule` varchar(10) DEFAULT NULL,
-  `capitaine_id` int unsigned DEFAULT NULL,
-  `logo_url` varchar(255) DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `capitaine_id` int UNSIGNED DEFAULT NULL,
+  `logo_url` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Déchargement des données de la table `LigueEquipe`
 --
 
-INSERT INTO `LigueEquipe` (`id`, `ligue_id`, `nom`, `created_at`) VALUES
-(1, 2, 'Lycée Turgot', '2026-04-02 02:56:45'),
-(2, 2, 'Lycée Charles de Foucauld', '2026-04-02 02:56:45'),
-(3, 2, 'Lycée du Parc des Loges', '2026-04-02 02:56:45'),
-(4, 2, 'Lycée Paul Lapie', '2026-04-02 02:56:45'),
-(5, 2, 'Lycée Parc de Vilgénis', '2026-04-02 02:56:45'),
-(6, 2, 'Lycée Voillaume', '2026-04-02 02:56:45'),
-(7, 2, 'Lycée Louis Armand', '2026-04-02 02:56:45'),
-(8, 2, 'IRIS Paris', '2026-04-02 02:56:45'),
-(9, 2, 'CESI Nanterre', '2026-04-02 02:56:45'),
-(10, 2, 'Lycée Léonard de Vinci', '2026-04-02 02:56:45'),
-(11, 4, 'Équipe 1', '2026-04-02 19:38:06'),
-(12, 4, 'Équipe 2', '2026-04-02 19:38:06'),
-(13, 4, 'Équipe 3', '2026-04-02 19:38:06'),
-(14, 4, 'Équipe 4', '2026-04-02 19:38:06'),
-(15, 4, 'Équipe 5', '2026-04-02 19:38:06'),
-(16, 5, 'Ubuntu FC', '2026-09-22 08:04:54'),
-(17, 5, 'GOSNAT', '2026-09-22 08:04:54'),
-(18, 5, 'Sicario 94', '2026-09-22 08:04:54'),
-(19, 5, 'Essone-Geles', '2026-09-22 08:04:54'),
-(20, 5, 'Foxy', '2026-09-22 08:04:54'),
-(21, 5, 'Sous l\'Cocotier', '2026-09-22 08:04:54'),
-(22, 5, 'BDA', '2026-09-22 08:04:54'),
-(23, 5, 'BARCA 94', '2026-09-22 08:04:54'),
-(24, 5, 'Galactic Football', '2026-09-22 08:04:54');
+INSERT INTO `LigueEquipe` (`id`, `ligue_id`, `nom`, `created_at`, `poule`, `capitaine_id`, `logo_url`) VALUES
+(1, 2, 'Lycée Turgot', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(2, 2, 'Lycée Charles de Foucauld', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(3, 2, 'Lycée du Parc des Loges', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(4, 2, 'Lycée Paul Lapie', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(5, 2, 'Lycée Parc de Vilgénis', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(6, 2, 'Lycée Voillaume', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(7, 2, 'Lycée Louis Armand', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(8, 2, 'IRIS Paris', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(9, 2, 'CESI Nanterre', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(10, 2, 'Lycée Léonard de Vinci', '2026-04-02 02:56:45', NULL, NULL, NULL),
+(11, 4, 'Équipe 1', '2026-04-02 19:38:06', NULL, NULL, NULL),
+(12, 4, 'Équipe 2', '2026-04-02 19:38:06', NULL, NULL, NULL),
+(13, 4, 'Équipe 3', '2026-04-02 19:38:06', NULL, NULL, NULL),
+(14, 4, 'Équipe 4', '2026-04-02 19:38:06', NULL, NULL, NULL),
+(15, 4, 'Équipe 5', '2026-04-02 19:38:06', NULL, NULL, NULL),
+(16, 5, 'Ubuntu FC', '2026-09-22 08:04:54', 'A', 9, '/uploads/team-logos/ligue-team-16-1790157540921.png'),
+(17, 5, 'GOSNAT', '2026-09-22 08:04:54', 'A', NULL, '/uploads/team-logos/ligue-team-17-1790157651669.png'),
+(18, 5, 'Sicario 94', '2026-09-22 08:04:54', 'A', NULL, '/uploads/team-logos/ligue-team-18-1790157692978.png'),
+(19, 5, 'Essone-Geles', '2026-09-22 08:04:54', 'A', NULL, '/uploads/team-logos/ligue-team-19-1790157728621.png'),
+(20, 5, 'Foxy', '2026-09-22 08:04:54', 'A', NULL, '/uploads/team-logos/ligue-team-20-1790157748065.png'),
+(21, 5, 'Sous l\'Cocotier', '2026-09-22 08:04:54', 'B', NULL, '/uploads/team-logos/ligue-team-21-1790157796714.png'),
+(22, 5, 'BDA', '2026-09-22 08:04:54', 'B', NULL, '/uploads/team-logos/ligue-team-22-1790157817358.png'),
+(23, 5, 'BARCA 94', '2026-09-22 08:04:54', 'B', NULL, '/uploads/team-logos/ligue-team-23-1790157833727.png'),
+(24, 5, 'Galactic Football', '2026-09-22 08:04:54', 'B', NULL, '/uploads/team-logos/ligue-team-24-1790157862473.png'),
+(25, 8, 'Équipe A', '2026-09-22 10:15:23', NULL, NULL, NULL),
+(26, 8, 'Équipe B', '2026-09-22 10:15:23', NULL, NULL, NULL),
+(27, 9, 'Équipe A', '2026-09-22 10:16:28', NULL, NULL, NULL),
+(28, 9, 'Équipe B', '2026-09-22 10:16:28', NULL, NULL, NULL),
+(29, 10, 'Équipe A', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(30, 10, 'Équipe B', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(31, 10, 'Équipe C', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(32, 10, 'Équipe D', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(33, 10, 'Équipe E', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(34, 10, 'Équipe F', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(35, 10, 'Équipe G', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(36, 10, 'Équipe H', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(37, 10, 'Équipe I', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(38, 10, 'Équipe J', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(39, 10, 'Équipe K', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(40, 10, 'Équipe L', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(41, 10, 'Équipe M', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(42, 10, 'Équipe N', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(43, 10, 'Équipe O', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(44, 10, 'Équipe P', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(45, 10, 'Équipe Q', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(46, 10, 'Équipe R', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(47, 10, 'Équipe S', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(48, 10, 'Équipe T', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(49, 10, 'Équipe U', '2026-09-22 11:27:37', NULL, NULL, NULL),
+(50, 10, 'Équipe V', '2026-09-22 11:27:37', NULL, NULL, NULL);
 
-UPDATE `LigueEquipe`
-SET `poule` = CASE `id`
-  WHEN 16 THEN 'A'
-  WHEN 17 THEN 'A'
-  WHEN 18 THEN 'A'
-  WHEN 19 THEN 'A'
-  WHEN 20 THEN 'A'
-  WHEN 21 THEN 'B'
-  WHEN 22 THEN 'B'
-  WHEN 23 THEN 'B'
-  WHEN 24 THEN 'B'
-END
-WHERE `ligue_id` = 5 AND `id` BETWEEN 16 AND 24;
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `LigueEquipeDemande`
+--
 
 CREATE TABLE `LigueEquipeDemande` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `ligue_id` int unsigned NOT NULL,
-  `equipe_id` int unsigned NOT NULL,
-  `utilisateur_id` int unsigned NOT NULL,
+  `id` int UNSIGNED NOT NULL,
+  `ligue_id` int UNSIGNED NOT NULL,
+  `equipe_id` int UNSIGNED NOT NULL,
+  `utilisateur_id` int UNSIGNED NOT NULL,
   `statut` enum('en_attente','acceptee','refusee') NOT NULL DEFAULT 'en_attente',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `decided_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_ligue_equipe_demande` (`equipe_id`,`utilisateur_id`)
+  `decided_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
@@ -251,13 +274,17 @@ CREATE TABLE `LigueUtilisateur` (
 --
 
 INSERT INTO `LigueUtilisateur` (`ligue_id`, `utilisateur_id`, `points`, `victoires`, `defaites`, `rejoint_le`, `equipe_id`, `statut`, `est_staff`, `role_ligue`) VALUES
-(2, 7, 0, 0, 0, '2026-04-02 02:56:45', NULL, 'en_attente', 0, 'joueur'),
 (3, 1, 0, 0, 1, '2026-04-02 17:40:30', NULL, 'en_attente', 0, 'joueur'),
-(3, 7, 0, 0, 0, '2026-04-02 03:18:07', NULL, 'en_attente', 0, 'joueur'),
 (3, 8, 3, 1, 0, '2026-04-02 17:30:15', NULL, 'en_attente', 0, 'joueur'),
-(4, 7, 0, 0, 0, '2026-04-02 19:38:06', NULL, 'en_attente', 0, 'joueur'),
+(4, 7, 0, 0, 0, '2026-04-02 19:38:06', NULL, 'en_attente', 0, 'admin'),
 (4, 8, 0, 0, 0, '2026-04-02 19:46:40', NULL, 'en_attente', 0, 'joueur'),
-(5, 7, 0, 0, 0, '2026-09-22 08:04:54', NULL, 'en_attente', 0, 'joueur');
+(5, 7, 0, 0, 0, '2026-09-22 11:22:13', NULL, 'en_attente', 0, 'admin'),
+(5, 8, 0, 0, 0, '2026-09-23 14:44:47', 17, 'valide', 0, 'joueur'),
+(5, 9, 0, 0, 0, '2026-09-22 14:42:59', 16, 'valide', 0, 'joueur'),
+(5, 10, 0, 0, 0, '2026-09-23 14:50:32', 16, 'valide', 0, 'joueur'),
+(5, 11, 0, 0, 0, '2026-09-23 14:51:34', 18, 'valide', 0, 'joueur'),
+(5, 12, 0, 0, 0, '2026-09-23 14:52:44', 17, 'valide', 0, 'joueur'),
+(5, 13, 0, 0, 0, '2026-09-23 14:53:44', 22, 'valide', 0, 'joueur');
 
 -- --------------------------------------------------------
 
@@ -359,33 +386,54 @@ CREATE TABLE `MatchSport` (
   `poule` enum('A','B') DEFAULT NULL,
   `phase` enum('poule','quart','demi','finale','classement') DEFAULT 'poule',
   `terrain_id` int DEFAULT '1',
+  `statut_match` enum('programme','en_cours','termine') DEFAULT 'programme',
   `terrain_nom` varchar(100) DEFAULT NULL,
-  `chrono_secondes` int unsigned NOT NULL DEFAULT '0',
+  `chrono_secondes` int UNSIGNED NOT NULL DEFAULT '0',
   `chrono_demarre_le` datetime DEFAULT NULL,
-  `chrono_duree_secondes` int unsigned NOT NULL DEFAULT '480',
+  `chrono_duree_secondes` int UNSIGNED NOT NULL DEFAULT '480',
   `chrono_phase` varchar(24) NOT NULL DEFAULT 'temps_reglementaire',
-  `chrono_temps_additionnel_secondes` int unsigned NOT NULL DEFAULT '0',
-  `chrono_prolongation_duree_secondes` int unsigned NOT NULL DEFAULT '300',
-  `tirs_au_but_a` tinyint unsigned DEFAULT NULL,
-  `tirs_au_but_b` tinyint unsigned DEFAULT NULL,
-  `tirs_au_but_details` json DEFAULT NULL,
-  `resultat_decision` varchar(24) NOT NULL DEFAULT 'normal',
-  `statut_match` enum('programme','en_cours','termine') DEFAULT 'programme'
+  `chrono_prolongation_duree_secondes` int UNSIGNED NOT NULL DEFAULT '300',
+  `chrono_temps_additionnel_secondes` int UNSIGNED NOT NULL DEFAULT '0',
+  `tirs_au_but_a` tinyint UNSIGNED DEFAULT NULL,
+  `tirs_au_but_b` tinyint UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Déchargement des données de la table `MatchSport`
 --
 
-INSERT INTO `MatchSport` (`id`, `sport_id`, `createur_id`, `ligue_id`, `titre`, `date_heure`, `localisation`, `nb_joueurs_max`, `nb_equipe_a`, `nb_equipe_b`, `nb_remplacants`, `nom_equipe_a`, `nom_equipe_b`, `statut`, `created_at`, `prive`, `code_acces`, `score_equipe_a`, `score_equipe_b`, `vainqueur_equipe`, `poule`, `phase`, `terrain_id`, `statut_match`) VALUES
-(1, 2, 7, NULL, 'Match de reprise ', '2026-04-10 18:00:00', 'Aubervilliers', 12, 5, 5, 2, 'SIO A', 'SIO B', 'ouvert', '2026-04-02 02:09:33', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme'),
-(2, 1, 7, NULL, 'Match Amical entre SIO ', '2026-02-10 14:30:00', 'Creteil', 18, 8, 8, 2, 'SIO1B', 'SIO2B', 'ouvert', '2026-04-02 02:13:10', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme'),
-(3, 1, 7, NULL, 'Match 1 - Turgot Paris VS Loges Evry', '2026-04-18 18:00:00', 'Creteil Rompadour', 20, 8, 8, 4, 'Turgot', 'Les Loges', 'annule', '2026-04-02 02:26:34', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme'),
-(4, 3, 7, NULL, 'Reprise', '2026-05-20 20:00:00', 'Pantin', 2, 1, 1, 0, 'Joueur 1', 'Joueur 2', 'ouvert', '2026-04-02 02:28:08', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme'),
-(5, 2, 7, NULL, 'entrainement collectif', '2026-04-05 13:30:00', 'Aubervilliers', 10, 5, 5, 0, 'Équipe A', 'Équipe B', 'ouvert', '2026-04-02 02:29:12', 1, 'U5UVPP2R', NULL, NULL, NULL, NULL, 'poule', 1, 'programme'),
-(6, 1, 7, 2, 'Lycée du Parc des Loges vs IRIS Paris', '2024-04-13 14:00:00', 'Paris', 18, 8, 8, 2, 'Lycée du Parc des Loges', 'IRIS Paris', 'ouvert', '2026-04-02 03:14:59', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme'),
-(7, 3, 7, 3, 'Match 1', '2026-04-04 13:00:00', 'Noisy-le-grand', 2, 1, 1, 0, 'Joueur 1', 'Joueur 2', 'termine', '2026-04-02 03:20:07', 0, NULL, 3, 2, 'A', NULL, 'poule', 1, 'programme'),
-(8, 1, 7, 5, 'Ubuntu FC vs GOSNAT', '2026-10-24 13:30:00', 'Ivry', 12, 6, 6, 0, 'Ubuntu FC', 'GOSNAT', 'ouvert', '2026-09-22 08:26:41', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme');
+INSERT INTO `MatchSport` (`id`, `sport_id`, `createur_id`, `ligue_id`, `titre`, `date_heure`, `localisation`, `nb_joueurs_max`, `nb_equipe_a`, `nb_equipe_b`, `nb_remplacants`, `nom_equipe_a`, `nom_equipe_b`, `statut`, `created_at`, `prive`, `code_acces`, `score_equipe_a`, `score_equipe_b`, `vainqueur_equipe`, `poule`, `phase`, `terrain_id`, `statut_match`, `terrain_nom`, `chrono_secondes`, `chrono_demarre_le`, `chrono_duree_secondes`, `chrono_phase`, `chrono_prolongation_duree_secondes`, `chrono_temps_additionnel_secondes`, `tirs_au_but_a`, `tirs_au_but_b`) VALUES
+(1, 2, 7, NULL, 'Match de reprise ', '2026-04-10 18:00:00', 'Aubervilliers', 12, 5, 5, 2, 'SIO A', 'SIO B', 'ouvert', '2026-04-02 02:09:33', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme', NULL, 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(2, 1, 7, NULL, 'Match Amical entre SIO ', '2026-02-10 14:30:00', 'Creteil', 18, 8, 8, 2, 'SIO1B', 'SIO2B', 'annule', '2026-04-02 02:13:10', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme', NULL, 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(3, 1, 7, NULL, 'Match 1 - Turgot Paris VS Loges Evry', '2026-04-18 18:00:00', 'Creteil Rompadour', 20, 8, 8, 4, 'Turgot', 'Les Loges', 'annule', '2026-04-02 02:26:34', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme', NULL, 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(4, 3, 7, NULL, 'Reprise', '2026-05-20 20:00:00', 'Pantin', 2, 1, 1, 0, 'Joueur 1', 'Joueur 2', 'ouvert', '2026-04-02 02:28:08', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme', NULL, 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(5, 2, 7, NULL, 'entrainement collectif', '2026-04-05 13:30:00', 'Aubervilliers', 10, 5, 5, 0, 'Équipe A', 'Équipe B', 'ouvert', '2026-04-02 02:29:12', 1, 'U5UVPP2R', NULL, NULL, NULL, NULL, 'poule', 1, 'programme', NULL, 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(6, 1, 7, 2, 'Lycée du Parc des Loges vs IRIS Paris', '2024-04-13 14:00:00', 'Paris', 18, 8, 8, 2, 'Lycée du Parc des Loges', 'IRIS Paris', 'ouvert', '2026-04-02 03:14:59', 0, NULL, NULL, NULL, NULL, NULL, 'poule', 1, 'programme', NULL, 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(7, 3, 7, 3, 'Match 1', '2026-04-04 13:00:00', 'Noisy-le-grand', 2, 1, 1, 0, 'Joueur 1', 'Joueur 2', 'termine', '2026-04-02 03:20:07', 0, NULL, 3, 2, 'A', NULL, 'poule', 1, 'programme', NULL, 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(8, 1, 7, 5, 'Ubuntu FC vs GOSNAT', '2026-10-24 13:30:00', 'Urban Soccer Ivry', 12, 6, 6, 0, 'Ubuntu FC', 'GOSNAT', 'termine', '2026-09-22 08:26:41', 0, NULL, 0, 0, NULL, NULL, 'poule', 1, 'termine', '1', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(9, 1, 7, 5, 'Test chrono 10', '2026-10-24 12:10:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Ubuntu FC', 'Sicario 94', 'termine', '2026-09-22 11:09:11', 0, NULL, 1, 1, NULL, 'A', 'poule', 1, 'termine', '1', 0, NULL, 60, 'temps_reglementaire', 300, 0, NULL, NULL),
+(10, 1, 7, 5, 'Ubuntu FC vs Essone-Geles', '2026-10-24 12:10:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Ubuntu FC', 'Essone-Geles', 'termine', '2026-09-22 11:09:11', 0, NULL, 2, 2, NULL, 'A', 'poule', 2, 'termine', '2', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(11, 1, 7, 5, 'Ubuntu FC vs Foxy', '2026-10-24 12:20:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Ubuntu FC', 'Foxy', 'termine', '2026-09-22 11:09:11', 0, NULL, 3, 0, 'A', 'A', 'poule', 1, 'termine', '1', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(12, 1, 7, 5, 'GOSNAT vs Sicario 94', '2026-10-24 12:20:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'GOSNAT', 'Sicario 94', 'termine', '2026-09-22 11:09:11', 0, NULL, 0, 1, 'B', 'A', 'poule', 2, 'termine', '2', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(13, 1, 7, 5, 'GOSNAT vs Essone-Geles', '2026-10-24 12:30:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'GOSNAT', 'Essone-Geles', 'termine', '2026-09-22 11:09:11', 0, NULL, 1, 2, 'B', 'A', 'poule', 1, 'termine', '1', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(14, 1, 7, 5, 'GOSNAT vs Foxy', '2026-10-24 12:30:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'GOSNAT', 'Foxy', 'termine', '2026-09-22 11:09:11', 0, NULL, 2, 0, 'A', 'A', 'poule', 2, 'termine', '2', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(15, 1, 7, 5, 'Sicario 94 vs Essone-Geles', '2026-10-24 12:40:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Sicario 94', 'Essone-Geles', 'termine', '2026-09-22 11:09:11', 0, NULL, 3, 1, 'A', 'A', 'poule', 1, 'termine', '1', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(16, 1, 7, 5, 'Sicario 94 vs Foxy', '2026-10-24 12:40:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Sicario 94', 'Foxy', 'termine', '2026-09-22 11:09:11', 0, NULL, 0, 2, 'B', 'A', 'poule', 2, 'termine', '2', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(17, 1, 7, 5, 'Essone-Geles vs Foxy', '2026-10-24 12:50:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Essone-Geles', 'Foxy', 'termine', '2026-09-22 11:09:11', 0, NULL, 1, 0, 'A', 'A', 'poule', 1, 'termine', '1', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(18, 1, 7, 5, 'Sous l\'Cocotier vs BDA', '2026-10-24 12:50:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Sous l\'Cocotier', 'BDA', 'termine', '2026-09-22 11:09:11', 0, NULL, 2, 1, 'A', 'B', 'poule', 2, 'termine', '2', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(19, 1, 7, 5, 'Sous l\'Cocotier vs BARCA 94', '2026-10-24 13:00:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Sous l\'Cocotier', 'BARCA 94', 'termine', '2026-09-22 11:09:11', 0, NULL, 3, 2, 'A', 'B', 'poule', 1, 'termine', '1', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(20, 1, 7, 5, 'Sous l\'Cocotier vs Galactic Football', '2026-10-24 13:00:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Sous l\'Cocotier', 'Galactic Football', 'termine', '2026-09-22 11:09:11', 0, NULL, 0, 0, NULL, 'B', 'poule', 2, 'termine', '2', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(21, 1, 7, 5, 'BDA vs BARCA 94', '2026-10-24 13:10:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'BDA', 'BARCA 94', 'termine', '2026-09-22 11:09:11', 0, NULL, 1, 1, NULL, 'B', 'poule', 1, 'termine', '1', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(22, 1, 7, 5, 'BDA vs Galactic Football', '2026-10-24 13:10:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'BDA', 'Galactic Football', 'termine', '2026-09-22 11:09:11', 0, NULL, 2, 2, NULL, 'B', 'poule', 2, 'termine', '2', 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(23, 1, 7, 5, 'BARCA 94 vs Galactic Football', '2026-10-24 13:20:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'BARCA 94', 'Galactic Football', 'termine', '2026-09-22 11:09:11', 0, NULL, 3, 0, 'A', 'B', 'poule', 1, 'termine', '1', 0, NULL, 60, 'temps_reglementaire', 300, 0, NULL, NULL),
+(29, 1, 7, 5, 'BDA vs Galactic Football', '2026-09-22 13:47:56', 'Urban Soccer Ivry', 2, 1, 1, 0, 'BDA', 'Galactic Football', 'termine', '2026-09-22 13:47:56', 0, NULL, 0, 0, 'B', NULL, 'classement', 1, 'termine', NULL, 1301016, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(30, 1, 7, 5, 'Sicario 94 vs Galactic Football', '2026-10-24 13:47:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Sicario 94', 'Galactic Football', 'termine', '2026-09-22 13:47:56', 0, NULL, 0, 0, 'A', NULL, 'quart', 1, 'termine', NULL, 1188750, NULL, 60, 'temps_reglementaire', 300, 0, NULL, NULL),
+(31, 1, 7, 5, 'BARCA 94 vs Ubuntu FC', '2026-10-24 13:47:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'BARCA 94', 'Ubuntu FC', 'termine', '2026-09-22 13:47:56', 0, NULL, 0, 0, 'A', NULL, 'quart', 1, 'termine', NULL, 1301039, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(32, 1, 7, 5, 'Sous l\'Cocotier vs GOSNAT', '2026-10-24 13:47:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Sous l\'Cocotier', 'GOSNAT', 'termine', '2026-09-22 13:47:57', 0, NULL, 0, 0, 'B', NULL, 'quart', 1, 'termine', NULL, 120, NULL, 60, 'prolongation', 120, 180, NULL, NULL),
+(33, 1, 7, 5, 'Essone-Geles vs BDA', '2026-09-22 13:47:57', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Essone-Geles', 'BDA', 'termine', '2026-09-22 13:47:57', 0, NULL, 0, 0, 'B', NULL, 'quart', 1, 'termine', NULL, 1303277, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(34, 1, 7, 5, 'Sicario 94 vs BARCA 94', '2026-10-08 16:06:09', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Sicario 94', 'BARCA 94', 'termine', '2026-10-08 16:06:09', 0, NULL, 1, 0, 'A', NULL, 'demi', 1, 'termine', NULL, 0, NULL, 480, 'temps_reglementaire', 300, 0, NULL, NULL),
+(35, 1, 7, 5, 'GOSNAT vs BDA', '2026-10-08 16:06:09', 'Urban Soccer Ivry', 2, 1, 1, 0, 'GOSNAT', 'BDA', 'termine', '2026-10-08 16:06:09', 0, NULL, 2, 2, 'B', NULL, 'demi', 1, 'termine', NULL, 60, NULL, 480, 'prolongation', 60, 60, 2, 3),
+(36, 1, 7, 5, 'Sicario 94 vs BDA', '2026-10-24 16:11:00', 'Urban Soccer Ivry', 2, 1, 1, 0, 'Sicario 94', 'BDA', 'termine', '2026-10-08 16:11:04', 0, NULL, 1, 4, 'B', NULL, 'finale', 1, 'termine', NULL, 60, NULL, 60, 'temps_reglementaire', 300, 0, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -406,19 +454,19 @@ CREATE TABLE `ParticipationMatch` (
 --
 
 INSERT INTO `ParticipationMatch` (`match_id`, `utilisateur_id`, `rejoint_le`, `equipe`, `statut`) VALUES
-(1, 7, '2026-04-02 02:09:33', NULL, 'en_attente'),
-(1, 8, '2026-04-02 03:38:34', NULL, 'en_attente'),
+(1, 7, '2026-04-02 02:09:33', 'A', 'valide'),
+(1, 8, '2026-04-02 03:38:34', 'B', 'valide'),
+(1, 9, '2026-09-23 12:54:19', 'A', 'en_attente'),
 (2, 7, '2026-04-02 02:13:11', 'B', 'valide'),
-(2, 8, '2026-04-02 03:38:21', 'A', 'valide'),
+(2, 8, '2026-04-02 03:38:21', NULL, 'en_attente'),
 (3, 7, '2026-04-02 02:26:34', 'A', 'valide'),
 (4, 7, '2026-04-02 02:28:08', 'A', 'valide'),
 (4, 8, '2026-04-02 03:38:43', 'B', 'en_attente'),
+(4, 9, '2026-09-23 12:54:00', 'B', 'en_attente'),
 (5, 7, '2026-04-02 02:29:12', 'A', 'valide'),
 (6, 7, '2026-04-02 03:14:59', NULL, 'en_attente'),
 (7, 1, '2026-04-02 18:34:03', 'B', 'valide'),
-(7, 7, '2026-04-02 03:20:07', 'A', 'en_attente'),
-(7, 8, '2026-04-02 20:15:33', 'A', 'valide'),
-(8, 7, '2026-09-22 08:26:41', NULL, 'en_attente');
+(7, 8, '2026-04-02 20:15:33', 'A', 'valide');
 
 -- --------------------------------------------------------
 
@@ -494,24 +542,23 @@ CREATE TABLE `StatsJoueurMatch` (
   `id` int UNSIGNED NOT NULL,
   `match_id` int UNSIGNED NOT NULL,
   `utilisateur_id` int UNSIGNED NOT NULL,
+  `equipe` enum('A','B') DEFAULT NULL,
   `buts` int UNSIGNED DEFAULT '0',
   `passes_decisives` int UNSIGNED DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- --------------------------------------------------------
-
 --
--- Structure de la table `StatsJoueurMatch`
+-- Déchargement des données de la table `StatsJoueurMatch`
 --
 
-CREATE TABLE `StatsJoueurMatch` (
-  `match_id` int UNSIGNED NOT NULL,
-  `utilisateur_id` int UNSIGNED NOT NULL,
-  `equipe` enum('A','B') NOT NULL,
-  `buts` int UNSIGNED NOT NULL DEFAULT '0',
-  `passes_decisives` int UNSIGNED NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+INSERT INTO `StatsJoueurMatch` (`id`, `match_id`, `utilisateur_id`, `equipe`, `buts`, `passes_decisives`, `created_at`) VALUES
+(1, 34, 11, 'A', 1, 0, '2026-10-08 16:10:57'),
+(2, 35, 8, 'A', 2, 0, '2026-10-08 16:16:33'),
+(3, 35, 12, 'A', 0, 1, '2026-10-08 16:16:33'),
+(4, 35, 13, 'B', 2, 0, '2026-10-08 16:16:35'),
+(7, 36, 13, 'B', 4, 0, '2026-10-08 16:54:01'),
+(10, 36, 11, 'A', 1, 0, '2026-10-08 16:54:18');
 
 -- --------------------------------------------------------
 
@@ -521,8 +568,8 @@ CREATE TABLE `StatsJoueurMatch` (
 
 CREATE TABLE `Utilisateur` (
   `id` int UNSIGNED NOT NULL,
-  `nom` varchar(100) NOT NULL,
-  `prenom` varchar(100) NOT NULL,
+  `nom` varchar(100) DEFAULT NULL,
+  `prenom` varchar(100) DEFAULT NULL,
   `pseudo` varchar(50) NOT NULL,
   `email` varchar(150) NOT NULL,
   `mot_de_passe` varchar(255) NOT NULL,
@@ -538,11 +585,16 @@ CREATE TABLE `Utilisateur` (
 --
 
 INSERT INTO `Utilisateur` (`id`, `nom`, `prenom`, `pseudo`, `email`, `mot_de_passe`, `localisation`, `avatar_url`, `created_at`, `updated_at`, `photo_url`) VALUES
-(1, 'Inconnu', 'Kody', 'Kody', 'borisephestion@gmail.com', '$2b$10$UZrY7LMZBYVP3atRsID4z.xV2R33oejss3TO8kGZefWzvEyGl1IRK', 'Paris', NULL, '2026-03-31 15:38:29', '2026-04-02 20:12:23', NULL),
-(2, 'Test', 'User', 'testuser', 'test@test.com', '$2b$10$.3GHgcevt2E7VZXwjqxdXuwyylFMCSbJ2xifHu6buN5JKUwoSn2uO', 'Paris', NULL, '2026-03-31 15:42:07', '2026-03-31 15:42:07', NULL),
-(3, 'Test', 'User 2', 'testuser2', 'test2@test.com', '$2b$10$6bI77yAHfhINYgo/mio5Yu5G33DxLhe1GJC9HreBLDsV947Pv2VxW', 'Paris', NULL, '2026-03-31 15:42:35', '2026-03-31 15:42:35', NULL),
-(7, 'Ephestion', 'Boris', '313Kody', 'kodyharvent@gmail.com', '$2b$10$XsyRzDc33jzAWcowinrNgu/NX7D1gPff.7XkCHEbwSL9Bx3yyeI/6', 'Paris', NULL, '2026-04-02 02:08:18', '2026-04-02 20:12:23', NULL),
-(8, 'Timber', 'John', 'John', 'johntimber@gmail.com', '$2b$10$KJeai/Kbf44D0EXwiwJENuysFTS4tuPTAx0d8CJ74pRLqYPiMhPza', 'Paris', NULL, '2026-04-02 03:34:42', '2026-04-02 03:34:42', NULL);
+(1, NULL, NULL, 'Kody', 'borisephestion@gmail.com', '$2b$10$UZrY7LMZBYVP3atRsID4z.xV2R33oejss3TO8kGZefWzvEyGl1IRK', 'Paris', NULL, '2026-03-31 15:38:29', '2026-04-02 20:12:23', NULL),
+(2, NULL, NULL, 'testuser', 'test@test.com', '$2b$10$.3GHgcevt2E7VZXwjqxdXuwyylFMCSbJ2xifHu6buN5JKUwoSn2uO', 'Paris', NULL, '2026-03-31 15:42:07', '2026-03-31 15:42:07', NULL),
+(3, NULL, NULL, 'testuser2', 'test2@test.com', '$2b$10$6bI77yAHfhINYgo/mio5Yu5G33DxLhe1GJC9HreBLDsV947Pv2VxW', 'Paris', NULL, '2026-03-31 15:42:35', '2026-03-31 15:42:35', NULL),
+(7, 'EPHESTION', 'Boris', '313Kody', 'kodyharvent@gmail.com', '$2b$10$XsyRzDc33jzAWcowinrNgu/NX7D1gPff.7XkCHEbwSL9Bx3yyeI/6', 'Paris', '/uploads/profile-avatars/avatar-7-1790069443569-135723646.jpg', '2026-04-02 02:08:18', '2026-09-22 09:35:37', NULL),
+(8, NULL, NULL, 'John', 'johntimber@gmail.com', '$2b$10$KJeai/Kbf44D0EXwiwJENuysFTS4tuPTAx0d8CJ74pRLqYPiMhPza', 'Paris', NULL, '2026-04-02 03:34:42', '2026-04-02 03:34:42', NULL),
+(9, 'Sarah', 'Martin', 'Slayer', 'sarah.martin@gmail.com', '$2b$10$k1d21v0x4DJvr8fxWlsWfOU9tO4Uxst2RBbguykKhddUSj45V6Xry', 'Paris', '/uploads/profile-avatars/avatar-9-1790167993812-730981823.jpg', '2026-09-22 14:42:49', '2026-09-23 12:53:13', NULL),
+(10, 'Morel', 'Lucas', 'LukaVibes_92', 'lucas.morel92@example.com', '$2b$10$cnV/aDFT9n0mp36KS7w4vu5Qgo56WTYqOjefhIckUVWfXaAZiETUW', 'Évry-Courcouronnes', NULL, '2026-09-23 14:50:13', '2026-09-23 14:50:13', NULL),
+(11, 'Benail', 'Yasmine', 'Yazou_Craft', 'yasmine.benali@example.com', '$2b$10$My./aCtGzpSVg8qYURHkL.hnUgXFLh.fgIZh99BF1EqunIf6RLoUy', 'Lille', NULL, '2026-09-23 14:51:20', '2026-09-23 14:51:20', NULL),
+(12, 'Leroy', 'Valentin', 'Valo_Rant94', 'valentin.leroy@example.com', '$2b$10$ekNXQwYTQeuDt/0sdPzccejM/UBSlIPoQPuYA2hooXgSaAEW5IuWa', 'Villejuif', NULL, '2026-09-23 14:52:32', '2026-09-23 14:52:32', NULL),
+(13, 'Diallo', 'Aïssata', 'Aissa_Code', 'aissata.diallo@example.com', '$2b$10$9UElFk5AeoE7lF0cTq1IpuhZB8JYR2mZZfeea2avhmqSh78sKL7fG', 'Arcueil', NULL, '2026-09-23 14:53:35', '2026-09-23 14:53:35', NULL);
 
 -- --------------------------------------------------------
 
@@ -594,7 +646,13 @@ INSERT INTO `UtilisateurSport` (`utilisateur_id`, `sport_id`, `elo`, `victoires`
 (8, 1, 1000, 0, 0),
 (8, 2, 1000, 0, 0),
 (8, 3, 1000, 1, 0),
-(8, 5, 1000, 0, 0);
+(8, 5, 1000, 0, 0),
+(9, 1, 1000, 0, 0),
+(9, 3, 1000, 0, 0),
+(10, 1, 1000, 0, 0),
+(12, 1, 1000, 0, 0),
+(12, 3, 1000, 0, 0),
+(13, 1, 1000, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -678,7 +736,7 @@ ALTER TABLE `EquipeEsport`
 --
 ALTER TABLE `EquipeMembre`
   ADD PRIMARY KEY (`equipe_id`,`utilisateur_id`),
-  ADD KEY `idx_equipe_membre_utilisateur` (`utilisateur_id`);
+  ADD KEY `fk_em_utilisateur` (`utilisateur_id`);
 
 --
 -- Index pour la table `JeuEsport`
@@ -702,6 +760,15 @@ ALTER TABLE `Ligue`
 ALTER TABLE `LigueEquipe`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_ligue_nom` (`ligue_id`,`nom`);
+
+--
+-- Index pour la table `LigueEquipeDemande`
+--
+ALTER TABLE `LigueEquipeDemande`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_ligue_equipe_demande` (`equipe_id`,`utilisateur_id`),
+  ADD KEY `ligue_id` (`ligue_id`),
+  ADD KEY `utilisateur_id` (`utilisateur_id`);
 
 --
 -- Index pour la table `LigueUtilisateur`
@@ -782,7 +849,7 @@ ALTER TABLE `Sport`
 --
 ALTER TABLE `StatsJoueurMatch`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_sjm_match` (`match_id`),
+  ADD UNIQUE KEY `uq_sjm_match_user` (`match_id`,`utilisateur_id`),
   ADD KEY `fk_sjm_utilisateur` (`utilisateur_id`);
 
 --
@@ -823,7 +890,7 @@ ALTER TABLE `ValidationPhaseFinale`
 -- AUTO_INCREMENT pour la table `EquipeDemande`
 --
 ALTER TABLE `EquipeDemande`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT pour la table `EquipeEsport`
@@ -841,13 +908,19 @@ ALTER TABLE `JeuEsport`
 -- AUTO_INCREMENT pour la table `Ligue`
 --
 ALTER TABLE `Ligue`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT pour la table `LigueEquipe`
 --
 ALTER TABLE `LigueEquipe`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
+
+--
+-- AUTO_INCREMENT pour la table `LigueEquipeDemande`
+--
+ALTER TABLE `LigueEquipeDemande`
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `MatchEsport`
@@ -859,7 +932,7 @@ ALTER TABLE `MatchEsport`
 -- AUTO_INCREMENT pour la table `MatchSport`
 --
 ALTER TABLE `MatchSport`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT pour la table `ResultatMatch`
@@ -883,13 +956,13 @@ ALTER TABLE `Sport`
 -- AUTO_INCREMENT pour la table `StatsJoueurMatch`
 --
 ALTER TABLE `StatsJoueurMatch`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT pour la table `Utilisateur`
 --
 ALTER TABLE `Utilisateur`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT pour la table `ValidationPhaseFinale`
@@ -960,6 +1033,14 @@ ALTER TABLE `Ligue`
 --
 ALTER TABLE `LigueEquipe`
   ADD CONSTRAINT `fk_le_ligue` FOREIGN KEY (`ligue_id`) REFERENCES `Ligue` (`id`) ON DELETE CASCADE;
+
+--
+-- Contraintes pour la table `LigueEquipeDemande`
+--
+ALTER TABLE `LigueEquipeDemande`
+  ADD CONSTRAINT `LigueEquipeDemande_ibfk_1` FOREIGN KEY (`ligue_id`) REFERENCES `Ligue` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `LigueEquipeDemande_ibfk_2` FOREIGN KEY (`equipe_id`) REFERENCES `LigueEquipe` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `LigueEquipeDemande_ibfk_3` FOREIGN KEY (`utilisateur_id`) REFERENCES `Utilisateur` (`id`) ON DELETE CASCADE;
 
 --
 -- Contraintes pour la table `LigueUtilisateur`

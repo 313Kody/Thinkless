@@ -819,6 +819,7 @@
       let goalTeam = null;
       let liveFinishRequested = false;
       let liveAutoPauseRequested = false;
+      let liveAutoFinishTried = false;
       let finalForfeitWinner = null;
       let liveClockBaseSeconds = 0;
       let liveClockBaseAt = null;
@@ -859,6 +860,8 @@
         liveClockBaseAt = running ? Date.now() : null;
         if (matchData.statut_match !== "en_cours") {
           liveAutoPauseRequested = false;
+        } else {
+          liveAutoFinishTried = false;
         }
         const canAddTime =
           running && phase === "temps_reglementaire" && !liveTimeAdditionPending;
@@ -972,8 +975,21 @@
           !liveAutoPauseRequested
         ) {
           liveAutoPauseRequested = true;
+          liveAutoFinishTried = true;
           clearInterval(liveTimer);
           pauseLiveMatch(true);
+        } else if (
+          elapsed >= duration &&
+          duration > 0 &&
+          matchData.statut_match === "programme" &&
+          matchData.statut !== "termine" &&
+          matchData.equipes_determinees !== false &&
+          !liveAutoFinishTried
+        ) {
+          // Chrono déjà arrivé au bout (ex. page rechargée) : on termine le match
+          liveAutoFinishTried = true;
+          clearInterval(liveTimer);
+          finishLiveMatch();
         }
       }
 
@@ -1079,6 +1095,8 @@
           closeFinalDecision();
           await finishLiveMatch({ vainqueur_forfait: finalForfeitWinner });
         };
+        // En phase finale, un match nul ne peut pas être forcé
+        document.getElementById("final-draw-btn").classList.add("hidden");
         document.getElementById("final-draw-btn").onclick = async () => {
           const score = `${Number(matchData.score_equipe_a || 0)} - ${Number(matchData.score_equipe_b || 0)}`;
           if (
@@ -1157,7 +1175,9 @@
           !resultDetails.terminer_match_nul &&
           resultDetails.tirs_au_but_a === undefined
         ) {
-          openFinalDecision();
+          // Égalité en élimination : prolongation d'abord, puis tirs au but
+          if (matchData.chrono_phase === "prolongation") openShootout();
+          else openFinalDecision();
           return;
         }
         liveFinishRequested = true;
@@ -1227,6 +1247,11 @@
           return showAlert(data.message || "Impossible de mettre en pause");
         }
         await loadMatch();
+        // Fin du chrono : le match passe automatiquement en « terminé »
+        // (si égalité en élimination directe, la modale de décision s'ouvre)
+        if (isAutomatic && matchData.statut_match === "programme") {
+          await finishLiveMatch();
+        }
       }
 
       async function resetLiveMatch() {

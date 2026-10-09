@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Espace capitaine – Thinkless</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/qr-utils.js"></script>
+  </head>
+  <body class="bg-gray-950 text-gray-100 min-h-screen">
+    <main class="max-w-xl mx-auto p-4 space-y-4">
+      <h1 class="text-2xl font-extrabold text-amber-400">🛡️ Espace capitaine</h1>
+      <div id="vue"></div>
+    </main>
+    <script>
+      const card = "bg-gray-900 border border-gray-800 rounded-xl p-4";
+      const inp = "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm";
+      const btnMain = "px-4 py-2 rounded-lg bg-amber-500 text-gray-900 font-semibold hover:bg-amber-400";
+      const btn = "px-3 py-1.5 rounded-lg border border-gray-700 text-sm hover:border-amber-400";
+      const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      let data = null;
+
+      async function capApi(path, method = "GET", body) {
+        const opts = { method, headers: { Authorization: "Bearer " + localStorage.getItem("capitaine_token") } };
+        if (body !== undefined) {
+          opts.headers["Content-Type"] = "application/json";
+          opts.body = JSON.stringify(body);
+        }
+        const res = await fetch("/api/capitaine" + path, opts);
+        const json = await res.json().catch(() => ({}));
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem("capitaine_token");
+          throw Object.assign(new Error(json.message || "Session expirée"), { auth: true });
+        }
+        if (!res.ok) throw new Error(json.message || `Erreur ${res.status}`);
+        return json;
+      }
+
+      function vueCode(msg) {
+        document.getElementById("vue").innerHTML = `<form onsubmit="return connexion(event)" class="${card} space-y-3">
+          <p class="text-sm text-gray-300">${esc(msg || "Entrez le code de votre équipe (ou scannez votre QR code).")}</p>
+          <input name="code" required maxlength="10" placeholder="Code d'équipe" class="${inp} uppercase tracking-widest" />
+          <button class="${btnMain}">Se connecter</button></form>`;
+      }
+
+      async function connexion(ev) {
+        ev.preventDefault();
+        try {
+          const code = new FormData(ev.target).get("code").trim();
+          const res = await fetch("/api/capitaine/login-code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code_acces: code }) });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json.message || "Code invalide");
+          localStorage.setItem("capitaine_token", json.token);
+          charger();
+        } catch (e) {
+          Swal.fire({ icon: "error", text: e.message });
+        }
+        return false;
+      }
+
+      async function charger() {
+        if (!localStorage.getItem("capitaine_token")) return vueCode();
+        try {
+          data = await capApi("/equipe");
+          render();
+        } catch (e) {
+          if (e.auth) vueCode(e.message);
+          else Swal.fire({ icon: "error", text: e.message });
+        }
+      }
+
+      function render() {
+        const eq = data.equipe;
+        const joueurs = data.joueurs || [];
+        document.getElementById("vue").innerHTML = `
+          <section class="${card}"><h2 class="text-xl font-bold">${esc(eq.nom)}</h2><p class="text-sm text-gray-400">Poule ${esc(eq.poule || "—")}</p>
+            <div class="flex gap-2 mt-3"><button class="${btnMain}" onclick="qrEquipe()">📲 QR Code de l'équipe</button><button class="${btn}" onclick="deconnexion()">Déconnexion</button></div></section>
+          <section class="${card} space-y-2"><h3 class="font-bold text-amber-400">Effectif (${joueurs.length})</h3>${
+            joueurs.length ? joueurs.map((j) => `<div class="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2 text-sm"><span><b class="text-amber-400">${j.numero != null ? "#" + esc(j.numero) : "#–"}</b> ${esc(j.nom || j.pseudo)} ${Number(j.est_capitaine) ? "👑" : ""} ${j.compte ? "" : '<span class="text-xs text-gray-500">(sans compte)</span>'}</span>${j.compte ? "" : `<button class="${btn} text-red-300" onclick="retirer(${j.id})">Retirer</button>`}</div>`).join("") : '<p class="text-gray-500 text-sm">Aucun joueur.</p>'
+          }</section>
+          <section class="${card} space-y-2"><h3 class="font-bold text-amber-400">Saisir l'effectif</h3>
+            <textarea id="txt" rows="4" class="${inp}" placeholder="1 - Chris, 2 - Idriss, 3 - Romann (C)"></textarea>
+            <label class="text-xs text-gray-400"><input id="rep" type="checkbox" /> Remplacer les joueurs sans compte existants</label><br />
+            <button class="${btnMain}" onclick="importer()">Importer</button></section>`;
+      }
+
+      async function importer() {
+        try {
+          const texte = document.getElementById("txt").value;
+          if (!texte.trim()) return Swal.fire({ icon: "info", text: "Saisissez un effectif." });
+          const r = await capApi("/effectif", "POST", { texte, remplacer: document.getElementById("rep").checked });
+          await Swal.fire({ icon: "success", text: r.message || "Effectif importé", timer: 1500, showConfirmButton: false });
+          charger();
+        } catch (e) {
+          Swal.fire({ icon: "error", text: e.message });
+        }
+      }
+
+      async function retirer(id) {
+        const c = await Swal.fire({ title: "Retirer ce joueur ?", icon: "warning", showCancelButton: true, confirmButtonText: "Retirer", cancelButtonText: "Annuler" });
+        if (!c.isConfirmed) return;
+        try {
+          await capApi(`/joueurs/${id}`, "DELETE");
+          charger();
+        } catch (e) {
+          Swal.fire({ icon: "error", text: e.message });
+        }
+      }
+
+      // Le QR partage la page publique de l'équipe, jamais le code secret du capitaine
+      function qrEquipe() {
+        const eq = data.equipe;
+        showQr({ titre: eq.nom, sousTitre: "Scanner pour rejoindre l'équipe", url: `${location.origin}/rejoindre/${eq.id}/${eq.jeton_rejoindre}` });
+      }
+
+      function deconnexion() {
+        localStorage.removeItem("capitaine_token");
+        localStorage.removeItem("capitaine_equipe");
+        vueCode("Vous êtes déconnecté.");
+      }
+
+      charger();
+    </script>
+  </body>
+</html>

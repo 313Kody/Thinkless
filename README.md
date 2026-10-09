@@ -25,26 +25,42 @@ Thinkless est une application web mobile-first de gestion de matchs et de tourno
 - Module e-sport : équipes, convocations, matchs et classements.
 - Téléversement de logos d’équipes et de ligues.
 
-### Incomplet ou manquant pour le tournoi du 24 octobre
+### Ajouts récents (préparation du tournoi)
 
-- **Permissions par rôle :** les rôles de ligue sont enregistrés, mais les permissions live ne sont pas séparées comme demandé. Le contrôle du chrono, du score et des buts s’appuie principalement sur le statut staff, sans appliquer une matrice stricte « arbitre = chrono/score », « table = statistiques/cartons ».
-- **Table de marque :** saisie de buteur/passeur disponible ; gestion des cartons non implémentée.
-- **Numéros de maillot :** aucune association persistante maillot-joueur n’est implémentée.
-- **LIVE CENTER spectateur :** les pages/API de ligue et de match exigent actuellement un JWT. Il n’existe pas de vue publique dédiée en lecture seule ni de route publique pour les données live.
-- **QR code :** aucune génération de QR pour ouvrir une vue spectateur.
-- **PWA :** aucun `manifest.json`, service worker (`sw.js`) ni flux d’installation n’est présent.
-- **Simplification du workflow éliminatoire :** le client actuel contient encore des choix de forfait et de tirs au but ; la clôture d’une égalité éliminatoire et les règles serveur doivent être alignées sur le workflow final retenu. Les anciennes colonnes liées aux tirs au but/temps additionnel subsistent dans le schéma historique.
-- **Tests automatisés :** aucun script de test ou de lint n’est défini dans `package.json`.
+- **Dashboard staff** (`public/staff-dashboard.html`) : gestion centralisée de la ligue (aperçu, équipes et joueurs, matchs, paramètres), alertes SweetAlert2.
+- **Poules et calendrier** : tirage, déplacement manuel d’une équipe entre poules avant verrouillage, génération automatique des matchs (Round-Robin : durée, pause, heure de début, terrains en alternance), clôture des poules et génération de la phase finale.
+- **Matchs** : filtre par terrain, « Appliquer un retard » (décale les matchs non joués en BDD), report/annulation autorisés au staff.
+- **Fin de match automatique** : fin de chrono → « terminé » en poule ; en phase finale → prolongation puis tirs au but, sans possibilité de forcer la fin sur une égalité.
+- **Équipes et joueurs** : création/suppression d’équipe, import d’effectif en masse (« 1 - Chris, 2 - Idriss (C) »), numéros de maillot, modale de modification/transfert/suppression d’un joueur. Les joueurs sans compte (« ghost ») sont stockés dans `LigueJoueur`.
+- **Accès simplifié** : `code_acces` par équipe, `POST /api/capitaine/login-code`, magic link `/claim/:code`, page `capitaine.html`.
+- **QR codes** (générés côté client, aucun service tiers) : QR live spectateurs, QR capitaine (secret) et QR « Rejoindre » (partageable).
+- **Page « Rejoindre »** (`/rejoindre/:equipeId/:jeton`, jeton HMAC) : inscription prénom/nom/numéro sans compte (`quickJoin`) ; si « Je veux être capitaine », email + mot de passe requis : compte Thinkless créé ou lié (mot de passe vérifié s’il existe), candidature stockée dans `LigueEquipe.demande_capitaine_id` (id utilisateur) puis validée ou refusée par le staff.
+- **Live spectateur public** (`/api/live`, `ligue-live.html`) en lecture seule ; pour une ligue privée, le `?code=` doit correspondre au code de la ligue (renvoyé après inscription via le QR).
+- **Docker 100 % portable** : `docker-compose.yml`, `.env.example`, `.gitignore` (`.env`, `node_modules`, `.history` retirés de l’index), `LEFT JOIN` sur `Sport`/`JeuEsport` pour les ligues e-sport et sportives.
+- **Schéma automatique** : `utils/schema.js` (`ensureSchema`) ajoute les colonnes manquantes (`code_acces`, `demande_capitaine_id`, `numero`…).
+
+### Reste à faire avant le test final
+
+- **À tester en navigateur** (non testé de bout en bout) : QR et page Rejoindre, encadré candidature capitaine (sur une équipe sans capitaine), statut « terminé » depuis `ligue.html`, enchaînement prolongation/tirs au but.
+- **Anciennes candidatures capitaine** (id de ghost) invalides depuis le passage à l’id utilisateur : à refuser dans le dashboard.
+- **Phase finale** : `genererPhaseFinale` impose encore poule A ≥ 5 et poule B ≥ 4 équipes ; à adapter au format réel.
+- **QR réseau** : le téléphone doit joindre le serveur (IP du PC ou domaine), `localhost` ne fonctionne pas ; prévoir une URL publique en production.
+- **Jeton Rejoindre fixe** : prévoir un bouton « régénérer » en cas de fuite.
+- **Permissions par rôle** : séparer arbitre (chrono/score) et table de marque (stats/cartons) côté serveur.
+- **Cartons** : non implémentés.
+- **PWA** : aucun `manifest.json` ni service worker.
+- **Docker** : contrôle de santé MySQL, éviter `npm install` à chaque démarrage, vérifier `JWT_SECRET` en production.
+- **Tests automatisés** : aucun script de test ou de lint dans `package.json`.
+- **Git** : commit des changements Docker/`.gitignore` et des nouvelles fonctionnalités.
 
 ## Priorités avant le 24 octobre
 
-1. **Verrouiller les workflows et permissions de match** : appliquer les rôles côté serveur, séparer les commandes d’arbitrage de celles de la table, et confirmer les règles de fin des matchs de poule/phase finale.
-2. **Créer le LIVE CENTER en lecture seule** : endpoints publics limités aux informations nécessaires (matchs, scores, classement et buteurs), sans exposer les données personnelles ou les routes de gestion.
-3. **Ajouter le QR code spectateur** : générer un lien par ligue/tournoi pointant vers le LIVE CENTER public.
-4. **Associer les numéros de maillot aux joueurs** : migration SQL, contrôles d’unicité par équipe et affichage dans les vues arbitre/table.
-5. **Ajouter la PWA** : manifeste, icônes, service worker, stratégie de cache adaptée et vérification du comportement hors ligne.
-6. **Fiabiliser le déploiement Docker** : rendre le réseau autonome ou documenter sa création, ajouter un contrôle de santé MySQL et éviter `npm install` à chaque démarrage du conteneur web.
-7. **Ajouter des tests de recette automatisés** pour les autorisations, le chrono, les scores, les classements et la consultation publique.
+1. **Recette complète sur la ligue de test** : poules → matchs → retard → fin de match → phase finale → live, avec des vrais téléphones.
+2. **Valider le flux capitaine** : QR Rejoindre, candidature avec compte, validation par le staff, connexion par code/magic link.
+3. **Verrouiller les permissions de match** côté serveur (arbitre / table / staff).
+4. **Adapter la phase finale** au nombre réel d’équipes par poule.
+5. **Fiabiliser le déploiement** (URL publique, HTTPS, secrets, santé MySQL).
+6. **Optionnel** : cartons, PWA, tests automatisés.
 
 ## Lancement local
 

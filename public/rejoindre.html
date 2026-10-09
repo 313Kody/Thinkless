@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rejoindre une équipe – Thinkless</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body
+    class="bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center p-4"
+  >
+    <main
+      class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4"
+    >
+      <div id="vue"><p class="text-gray-400">Chargement…</p></div>
+    </main>
+    <script>
+      const [, , equipeId, jeton] = location.pathname.split("/");
+      const base = `/api/rejoindre/${encodeURIComponent(equipeId)}/${encodeURIComponent(jeton)}`;
+      const vue = document.getElementById("vue");
+      const esc = (v) =>
+        String(v ?? "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      const inp =
+        "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-3 text-base";
+
+      function erreur(msg) {
+        vue.innerHTML = `<h1 class="text-xl font-bold text-red-400">Lien invalide</h1><p class="text-gray-400 mt-2">${esc(msg)}</p>`;
+      }
+
+      async function init() {
+        try {
+          const res = await fetch(base);
+          const d = await res.json().catch(() => ({}));
+          if (!res.ok) return erreur(d.message || "Ce lien n'est plus valide.");
+          vue.innerHTML = `
+            <p class="text-xs uppercase tracking-widest text-amber-300">${esc(d.ligue)}</p>
+            <h1 class="text-2xl font-extrabold mt-1">Rejoindre ${esc(d.equipe)}</h1>
+            <p class="text-sm text-gray-400 mt-1">Entrez votre prénom et votre nom pour être ajouté à l'effectif.</p>
+            <form id="f" class="space-y-3 mt-4">
+            <input name="prenom" required maxlength="40" autocomplete="given-name" placeholder="Prénom" class="${inp}" />
+            <input name="nom" required maxlength="40" autocomplete="family-name" placeholder="Nom" class="${inp}" />
+            <input name="numero" type="number" min="0" max="999" inputmode="numeric" placeholder="Numéro de maillot (optionnel)" class="${inp}" />
+            <label class="flex items-center gap-2 text-sm text-gray-300">
+              <input id="cap" name="cap" type="checkbox" /> Je veux être capitaine (à valider par le staff)
+            </label>
+            
+            <div id="champsCap" class="hidden space-y-3 border-l-2 border-amber-500 pl-3 my-2">
+              <p class="text-xs text-amber-400 font-semibold">Création / Liaison de compte Thinkless requise pour la gestion</p>
+              <input id="emailCap" name="email" type="email" maxlength="150" autocomplete="email" placeholder="Email" class="${inp}" />
+              <input id="passCap" name="mot_de_passe" type="password" autocomplete="new-password" placeholder="Mot de passe (12 car. min.)" class="${inp}" />
+            </div>
+
+            <p id="err" class="text-sm text-red-400"></p>
+            <button class="w-full py-3 rounded-lg bg-amber-500 text-gray-900 font-bold hover:bg-amber-400">Rejoindre l'équipe</button>
+          </form>`;
+          document.getElementById("f").addEventListener("submit", envoyer);
+          document.getElementById("cap").addEventListener("change", (e) => {
+            const bloc = document.getElementById("champsCap");
+            bloc.classList.toggle("hidden", !e.target.checked);
+            bloc
+              .querySelectorAll("input")
+              .forEach((i) => (i.required = e.target.checked));
+          });
+        } catch {
+          erreur("Serveur injoignable.");
+        }
+      }
+
+      async function envoyer(ev) {
+        ev.preventDefault();
+        const f = new FormData(ev.target);
+        const btn = ev.target.querySelector("button");
+        btn.disabled = true;
+        try {
+          const cap = f.get("cap") === "on";
+          const payload = {
+            prenom: f.get("prenom"),
+            nom: f.get("nom"),
+            numero: f.get("numero"),
+            veut_etre_capitaine: cap,
+          };
+          if (cap)
+            Object.assign(payload, {
+              email: f.get("email"),
+              mot_de_passe: f.get("mot_de_passe"),
+            });
+          const res = await fetch(base, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const d = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(d.message || "Erreur");
+          bienvenue(d, `${f.get("prenom")}`);
+        } catch (e) {
+          document.getElementById("err").textContent = e.message;
+          btn.disabled = false;
+        }
+      }
+
+      function bienvenue(d, prenom) {
+        vue.innerHTML = `
+          <div class="text-center space-y-3">
+            <div class="text-5xl">🎉</div>
+            <h1 class="text-2xl font-extrabold text-amber-400">Bienvenue ${esc(prenom)} !</h1>
+            <p>${d.deja_inscrit ? "Tu étais déjà inscrit dans" : "Tu fais maintenant partie de"} l'équipe <b>${esc(d.equipe)}</b>.</p>
+            <p class="text-gray-300">${d.capitaine ? `Ton capitaine d'équipe est <b>${esc(d.capitaine)}</b>.` : "Ton capitaine n'est pas encore désigné."}</p>
+            ${d.candidature_capitaine ? '<p class="text-amber-300 text-sm">🙋 Ta demande de capitaine est envoyée au staff.</p>' : ""}
+            <p class="text-xs text-gray-500">${esc(d.ligue)}</p>
+            <a href="/ligues/${encodeURIComponent(d.ligue_id)}/live${d.live_code ? "?code=" + encodeURIComponent(d.live_code) : ""}" class="block w-full py-3 rounded-lg bg-amber-500 text-gray-900 font-bold hover:bg-amber-400">📺 Suivre la ligue en direct</a>
+          </div>`;
+      }
+
+      init();
+    </script>
+  </body>
+</html>

@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="/swal-utils.js"></script>
+    <script src="/qr-utils.js"></script>
   </head>
   <body class="min-h-screen bg-gray-950 text-white">
     <script>
@@ -123,6 +124,12 @@
               id="team-captain"
               class="text-gray-400 text-sm sm:text-base mt-2"
             ></p>
+            <button
+              onclick="qrEquipe()"
+              class="mt-3 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold px-3 py-2 rounded-lg"
+            >
+              📲 QR Code de l'équipe
+            </button>
             <div
               id="team-logo-management"
               class="hidden mt-3 flex flex-wrap gap-2 items-center"
@@ -194,6 +201,19 @@
       const params = new URLSearchParams(window.location.search);
       const ligueId = params.get("ligue_id");
       const equipeId = params.get("equipe_id");
+      let nomEquipe = "";
+
+      // QR de la page équipe (lien public de la page, aucun code secret)
+      async function qrEquipe() {
+        try {
+          const res = await fetch(`/api/ligues/${ligueId}/equipes/${equipeId}/lien-rejoindre`, { headers: { Authorization: "Bearer " + token } });
+          const d = await res.json();
+          if (!res.ok) throw new Error(d.message || "Erreur");
+          showQr({ titre: nomEquipe || "Équipe", sousTitre: "Scanner pour rejoindre l'équipe", url: `${location.origin}${d.chemin}` });
+        } catch (e) {
+          alert(e.message);
+        }
+      }
 
       function setLeagueLinks() {
         const leagueUrl = `/ligue.html?id=${ligueId}`;
@@ -240,6 +260,7 @@
         if (!res.ok) throw new Error(data.message || "Equipe indisponible");
 
         const team = data.equipe;
+        nomEquipe = team.nom;
         document.getElementById("return-link").href =
           `/ligue.html?id=${ligueId}`;
         document.getElementById("team-name").textContent = team.nom;
@@ -264,12 +285,12 @@
               <div class="flex items-center gap-3 min-w-0">
                 ${player.avatar_url ? `<img src="${escapeHtml(player.avatar_url)}" alt="" class="w-10 h-10 rounded-full object-cover border border-gray-700 shrink-0" />` : `<div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold shrink-0">${escapeHtml((player.pseudo || "?").charAt(0).toUpperCase())}</div>`}
                 <div class="min-w-0">
-                <p class="font-semibold truncate">${escapeHtml(`${player.prenom || ""} ${player.nom || ""}`.trim() || player.pseudo)}</p>
-                <p class="text-gray-400 text-sm">@${escapeHtml(player.pseudo)}</p>
+                <p class="font-semibold truncate">${player.numero != null ? `<span class="text-amber-400">#${escapeHtml(player.numero)}</span> ` : ""}${escapeHtml(`${player.prenom || ""} ${player.nom || ""}`.trim() || player.pseudo)}</p>
+                <p class="text-gray-400 text-sm">${player.id ? "@" + escapeHtml(player.pseudo) : "Sans compte"}</p>
                 </div>
               </div>
               <div class="flex items-center gap-2 shrink-0">
-                ${Number(player.est_capitaine) ? '<span class="text-amber-300 text-xs font-bold uppercase tracking-wide">Capitaine</span>' : data.can_manage ? `<button onclick="designateCaptain(${player.id})" class="text-amber-300 text-xs border border-amber-800 hover:bg-amber-900/40 px-3 py-2 rounded-lg">Désigner capitaine</button>` : '<span class="text-gray-500 text-xs">Joueur</span>'}
+                ${Number(player.est_capitaine) ? '<span class="text-amber-300 text-xs font-bold uppercase tracking-wide">Capitaine</span>' : data.can_manage && player.id ? `<button onclick="designateCaptain(${player.id})" class="text-amber-300 text-xs border border-amber-800 hover:bg-amber-900/40 px-3 py-2 rounded-lg">Désigner capitaine</button>` : '<span class="text-gray-500 text-xs">Joueur</span>'}
               </div>
             </article>
           `,

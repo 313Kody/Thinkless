@@ -32,6 +32,66 @@ app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/accueil.html");
 });
 
+app.use("/api/capitaine", require("./routes/capitaine"));
+
+// Inscription publique d'un joueur via le QR de l'équipe (schéma assuré par le middleware)
+{
+  const effectifController = require("./controllers/effectifController");
+  const { schemaMiddleware } = require("./utils/schema");
+  app.get("/api/rejoindre/:equipeId/:jeton", schemaMiddleware, effectifController.infosRejoindre);
+  app.post("/api/rejoindre/:equipeId/:jeton", schemaMiddleware, effectifController.quickJoin);
+  app.get("/rejoindre/:equipeId/:jeton", (req, res) => {
+    res.sendFile(__dirname + "/public/rejoindre.html");
+  });
+}
+
+// Magic link capitaine : valide le code, stocke le token puis redirige
+app.get("/claim/:code", async (req, res) => {
+  try {
+    const { tentativesAutorisees, ouvrirSessionCapitaine } = require("./controllers/authController");
+    if (!tentativesAutorisees(req.ip)) {
+      return res.status(429).send("Trop de tentatives, réessayez plus tard.");
+    }
+    const session = await ouvrirSessionCapitaine(req.params.code);
+    if (!session) {
+      return res.status(404).send("Code d'équipe invalide ou révoqué.");
+    }
+    const donnees = JSON.stringify({
+      token: session.token,
+      nom: session.equipe.nom,
+    }).replace(/</g, "\\u003c");
+    res.set("Cache-Control", "no-store").type("html").send(
+      `<!doctype html><meta charset="utf-8"><title>Connexion capitaine</title>
+<p>Connexion en cours…</p>
+<script>
+const d = ${donnees};
+localStorage.setItem("capitaine_token", d.token);
+localStorage.setItem("capitaine_equipe", d.nom);
+location.replace("/capitaine");
+</script>`,
+    );
+  } catch (err) {
+    console.error("Erreur /claim :", err);
+    res.status(500).send("Erreur serveur");
+  }
+});
+
+app.get("/capitaine", (req, res) => {
+  res.sendFile(__dirname + "/public/capitaine.html");
+});
+
+app.get("/ligues/:id/live", (req, res) => {
+  res.sendFile(__dirname + "/public/ligue-live.html");
+});
+
+// Pages staff (l'accès réel est contrôlé par l'API via le JWT)
+app.get("/ligues/:id/dashboard", (req, res) => {
+  res.sendFile(__dirname + "/public/staff-dashboard.html");
+});
+app.get("/ligues/:id/gestion", (req, res) => {
+  res.sendFile(__dirname + "/public/staff-ligue.html");
+});
+
 app.get("/ping", async (req, res) => {
   try {
     const db = getPool();

@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard staff – Thinkless</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/qr-utils.js"></script>
+  </head>
+  <body class="bg-gray-950 text-gray-100 min-h-screen">
+    <header class="bg-gray-900 border-b border-gray-800 px-4 py-4">
+      <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="text-xs uppercase tracking-wide text-gray-500">Dashboard staff</p>
+          <h1 id="nom" class="text-2xl font-bold text-amber-400">Chargement…</h1>
+          <p id="infos" class="text-sm text-gray-400"></p>
+        </div>
+        <nav id="liens" class="flex flex-wrap gap-2 text-sm"></nav>
+      </div>
+      <div id="tabs" class="max-w-6xl mx-auto mt-4 flex gap-2 overflow-x-auto text-sm"></div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <p id="msg" class="hidden text-sm rounded-lg px-3 py-2"></p>
+      <div id="vue"></div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem("token");
+      const ligueId = (location.pathname.match(/\/ligues\/(\d+)\//) || [])[1];
+      if (!token) location.href = "/login.html";
+
+      const esc = (v) =>
+        String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const hhmm = (d) => {
+        const m = String(d || "").match(/(\d{2}):(\d{2})/);
+        return m ? `${m[1]}:${m[2]}` : "";
+      };
+      const card = "bg-gray-900 border border-gray-800 rounded-xl p-4";
+      const inp = "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm";
+      const btn = "px-3 py-2 rounded-lg border border-gray-700 hover:border-amber-400 text-gray-200 text-sm";
+      const btnMain = "px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-900 font-semibold text-sm";
+
+      // État partagé du dashboard (rechargé après chaque action)
+      const state = { ligue: null, matchs: [], classement: [], equipes: [], joueurs: [], tab: "apercu", filtre: "tous", terrain: "tous", equipeOuverte: null, matchEdit: null };
+
+      const TABS = [
+        ["apercu", "📊 Aperçu"],
+        ["matchs", "⚽ Matchs"],
+        ["poules", "🏆 Poules & phases"],
+        ["equipes", "🛡️ Équipes"],
+        ["joueurs", "👥 Joueurs"],
+        ["reglages", "⚙️ Réglages"],
+      ];
+
+      // Notifications et confirmations via SweetAlert2 (thème sombre)
+      const swalBase = {
+        background: "#111827",
+        color: "#e5e7eb",
+        confirmButtonColor: "#f59e0b",
+        cancelButtonColor: "#374151",
+      };
+      const toast = Swal.mixin({
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3500,
+        timerProgressBar: true,
+        background: "#111827",
+        color: "#e5e7eb",
+      });
+
+      function notify(text, ok = true) {
+        if (ok) toast.fire({ icon: "success", title: text });
+        else Swal.fire({ ...swalBase, icon: "error", title: "Erreur", text });
+      }
+
+      async function confirmer(text, titre = "Confirmer ?") {
+        const r = await Swal.fire({
+          ...swalBase,
+          icon: "question",
+          title: titre,
+          text,
+          showCancelButton: true,
+          confirmButtonText: "Oui",
+          cancelButtonText: "Non",
+        });
+        return r.isConfirmed;
+      }
+
+      async function askAction(text, fn, okText) {
+        if (await confirmer(text)) await action(fn, okText);
+      }
+
+      async function call(url, method = "GET", body) {
+        const opts = { method, headers: { Authorization: "Bearer " + token } };
+        if (body instanceof FormData) opts.body = body;
+        else if (body !== undefined) {
+          opts.headers["Content-Type"] = "application/json";
+          opts.body = JSON.stringify(body);
+        }
+        const res = await fetch(url, opts);
+        if (res.status === 401) {
+          localStorage.clear();
+          location.href = "/login.html";
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `Erreur ${res.status}`);
+        return data;
+      }
+      const api = (path, method, body) => call(`/api/ligues/${ligueId}${path}`, method, body);
+
+      // Exécute une action, affiche le résultat puis recharge les données
+      async function action(fn, okText) {
+        try {
+          const r = await fn();
+          notify(okText || r?.message || "OK");
+          await charger();
+        } catch (e) {
+          notify(e.message, false);
+        }
+      }
+
+      async function charger() {
+        const [ligue, matchs, classement, eq] = await Promise.all([
+          api(""),
+          api("/matchs"),
+          api("/classement").catch(() => []),
+          api("/equipes").catch(() => []),
+        ]);
+        if (!ligue.can_manage) {
+          document.getElementById("nom").textContent = "Accès réservé au staff";
+          document.getElementById("vue").innerHTML = "";
+          return;
+        }
+        state.ligue = ligue;
+        state.matchs = Array.isArray(matchs) ? matchs : [];
+        signatureMatchs = state.matchs.map((m) => `${m.id}:${m.statut}:${m.statut_match}:${m.score_equipe_a}-${m.score_equipe_b}`).join("|");
+        state.classement = Array.isArray(classement) ? classement : classement.classement || [];
+        state.equipes = Array.isArray(eq) ? eq : eq.equipes || [];
+        const j = await api("/joueurs").catch(() => ({ joueurs: [] }));
+        state.joueurs = j.joueurs || [];
+        // Rafraîchit la fiche d'équipe ouverte (effectif à jour)
+        if (state.equipeOuverte) state.equipeOuverte = await api(`/equipes/${state.equipeOuverte.equipe.id}`).catch(() => null);
+        entete();
+        render();
+      }
+
+      // Rafraîchissement auto : met à jour les statuts de matchs sans écraser une saisie en cours
+      let signatureMatchs = "";
+      async function rafraichirMatchs() {
+        try {
+          if (!state.ligue || document.hidden || Swal.isVisible()) return;
+          const matchs = await api("/matchs");
+          if (!Array.isArray(matchs)) return;
+          const sig = matchs.map((m) => `${m.id}:${m.statut}:${m.statut_match}:${m.score_equipe_a}-${m.score_equipe_b}`).join("|");
+          if (sig === signatureMatchs) return;
+          const premiere = false;
+          signatureMatchs = sig;
+          if (premiere) return;
+          const saisie = document.activeElement && ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+          if (saisie || state.matchEdit) return;
+          await charger();
+        } catch (e) {
+          console.error("Rafraîchissement dashboard :", e);
+        }
+      }
+      setInterval(rafraichirMatchs, 15000);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) charger(); });
+
+      function entete() {
+        const l = state.ligue;
+        document.title = `Staff – ${l.nom}`;
+        document.getElementById("nom").textContent = l.nom;
+        document.getElementById("infos").textContent = [l.lieu, l.date_debut && String(l.date_debut).slice(0, 10)].filter(Boolean).join(" • ");
+        document.getElementById("liens").innerHTML = `
+          <a class="${btn}" href="/ligue.html?id=${ligueId}">← Page de la ligue</a>
+          <a class="${btn}" href="/ligues/${ligueId}/live" target="_blank" rel="noopener">📺 Page live</a>`;
+        document.getElementById("tabs").innerHTML = TABS.map(
+          ([k, label]) =>
+            `<button onclick="goTab('${k}')" class="whitespace-nowrap px-4 py-2 rounded-lg border ${state.tab === k ? "bg-amber-500 text-gray-900 border-amber-500 font-semibold" : "border-gray-700 text-gray-300 hover:border-amber-400"}">${label}</button>`,
+        ).join("");
+      }
+
+      function goTab(k) {
+        state.tab = k;
+        entete();
+        render();
+      }
+
+      const stat = (m) => (m.statut === "annule" ? "annule" : m.statut === "termine" ? "termine" : m.statut_match === "en_cours" ? "en_cours" : "a_venir");
+      const badge = (m) => {
+        const s = stat(m);
+        const map = { annule: ["Annulé", "text-gray-400 border-gray-700"], termine: ["Terminé", "text-red-300 border-red-800"], en_cours: ["En cours", "text-amber-300 border-amber-700"], a_venir: ["À venir", "text-emerald-300 border-emerald-800"] };
+        return `<span class="text-xs border rounded px-2 py-0.5 ${map[s][1]}">${map[s][0]}</span>`;
+      };
+      const phaseLabel = (m) => (m.phase === "poule" ? `Poule ${m.poule || ""}` : m.phase || "");
+
+      function render() {
+        const f = { apercu: vueApercu, matchs: vueMatchs, poules: vuePoules, equipes: vueEquipes, joueurs: vueJoueurs, reglages: vueReglages }[state.tab];
+        document.getElementById("vue").innerHTML = f();
+      }
+
+      /* ---------- Aperçu ---------- */
+      function vueApercu() {
+        const { ligue, matchs, classement } = state;
+        const actifs = matchs.filter((m) => m.statut !== "annule");
+        const termines = actifs.filter((m) => stat(m) === "termine").length;
+        const enCours = actifs.filter((m) => stat(m) === "en_cours").length;
+        const cartes = [["Équipes", state.equipes.length], ["Joueurs", ligue.nb_joueurs ?? 0], ["Matchs joués", `${termines}/${actifs.length}`], ["En cours", enCours]];
+        const prochains = actifs.filter((m) => stat(m) !== "termine").sort((a, b) => new Date(a.date_heure) - new Date(b.date_heure)).slice(0, 6);
+        return `
+          <section class="grid grid-cols-2 md:grid-cols-4 gap-3">${cartes.map(([l, x]) => `<div class="${card}"><div class="text-3xl font-extrabold text-amber-400">${esc(x)}</div><div class="text-xs text-gray-400 mt-1">${l}</div></div>`).join("")}</section>
+          <section class="grid md:grid-cols-2 gap-4 mt-6">
+            <div class="${card}"><h2 class="font-bold text-amber-400 mb-3">Prochains matchs</h2><div class="space-y-2 text-sm">${
+              prochains.length ? prochains.map((m) => `<a href="/match.html?id=${m.id}" class="flex justify-between border-b border-gray-800 pb-1 hover:text-amber-300"><span>${esc(m.nom_equipe_a)} vs ${esc(m.nom_equipe_b)}</span><span class="text-gray-400">${hhmm(m.date_heure)} • T${esc(m.terrain_nom || m.terrain_id || "?")}</span></a>`).join("") : '<p class="text-gray-500">Aucun match à venir.</p>'
+            }</div></div>
+            <div class="${card}"><h2 class="font-bold text-amber-400 mb-3">Classement (top 5)</h2><div class="space-y-1 text-sm">${
+              classement.length ? classement.slice(0, 5).map((r, i) => `<div class="flex justify-between"><span>${i + 1}. ${esc(r.pseudo || r.nom)}</span><span class="text-amber-400 font-bold">${esc(r.points)} pts</span></div>`).join("") : '<p class="text-gray-500">Pas encore de classement.</p>'
+            }</div></div>
+          </section>
+          <section class="${card} mt-6"><h2 class="font-bold text-amber-400 mb-3">Accès &amp; codes</h2><div class="text-sm space-y-1 text-gray-300">
+            <p>Code joueurs : <b class="text-amber-400">${esc(ligue.code_joueur || ligue.code_acces || "—")}</b></p>
+            <p>Code staff : <b class="text-amber-400">${esc(ligue.code_staff || "—")}</b></p></div>
+            <button class="${btnMain} mt-3" onclick="qrLive()">📱 QR Code Live Spectateurs</button></section>`;
+      }
+
+      function qrLive() {
+        showQr({ titre: "Live spectateurs", sousTitre: state.ligue.nom, url: `${location.origin}/ligues/${ligueId}/live${state.ligue.publique ? "" : "?code=" + encodeURIComponent(state.ligue.code_acces || "")}` });
+      }
+
+      /* ---------- Matchs ---------- */
+      function optsEquipes(sel) {
+        return state.equipes.map((e) => `<option value="${esc(e.nom)}" ${e.nom === sel ? "selected" : ""}>${esc(e.nom)}${e.poule ? ` (poule ${esc(e.poule)})` : ""}</option>`).join("");
+      }
+      function optsTerrains(sel) {
+        const n = Number(state.ligue.nb_terrains) || 1;
+        return Array.from({ length: n }, (_, i) => `<option value="${i + 1}" ${Number(sel) === i + 1 ? "selected" : ""}>Terrain ${i + 1}</option>`).join("");
+      }
+
+      function formMatch(m) {
+        const edit = !!m;
+        return `
+          <form onsubmit="return saveMatch(event, ${edit ? m.id : "null"})" class="${card} space-y-3">
+            <h3 class="font-bold text-amber-400">${edit ? "Modifier le match" : "Créer un match"}</h3>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="text-xs text-gray-400">Équipe A<select name="a" required class="${inp}">${optsEquipes(m?.nom_equipe_a)}</select></label>
+              <label class="text-xs text-gray-400">Équipe B<select name="b" required class="${inp}">${optsEquipes(m?.nom_equipe_b)}</select></label>
+              <label class="text-xs text-gray-400">Heure<input name="heure" type="time" required value="${edit ? hhmm(m.date_heure) : ""}" class="${inp}" /></label>
+              <label class="text-xs text-gray-400">Terrain<select name="terrain" class="${inp}">${optsTerrains(m?.terrain_id)}</select></label>
+              <label class="text-xs text-gray-400">Durée (minutes)<input name="duree" type="number" min="1" max="120" value="${Math.round((m?.chrono_duree_secondes || 480) / 60)}" class="${inp}" /></label>
+            </div>
+            <div class="flex gap-2"><button class="${btnMain}">${edit ? "Enregistrer" : "Créer"}</button>${edit ? `<button type="button" onclick="state.matchEdit=null;render()" class="${btn}">Annuler</button>` : ""}</div>
+          </form>`;
+      }
+
+      async function saveMatch(ev, id) {
+        ev.preventDefault();
+        const f = new FormData(ev.target);
+        const a = f.get("a");
+        const b = f.get("b");
+        if (a === b) {
+          notify("Choisissez deux équipes différentes", false);
+          return false;
+        }
+        const terrain = Number(f.get("terrain"));
+        const base = {
+          titre: `${a} vs ${b}`,
+          nom_equipe_a: a,
+          nom_equipe_b: b,
+          heure_match: f.get("heure"),
+          terrain_id: terrain,
+          terrain_nom: `Terrain ${terrain}`,
+          chrono_duree_secondes: Number(f.get("duree")) * 60,
+          nb_equipe_a: 1,
+          nb_equipe_b: 1,
+          nb_remplacants: 0,
+        };
+        await action(async () => {
+          if (id) {
+            const m = state.matchs.find((x) => x.id === id);
+            await call(`/api/matchs/${id}`, "PUT", { ...base, date_heure: m.date_heure, localisation: m.localisation, nb_equipe_a: m.nb_equipe_a, nb_equipe_b: m.nb_equipe_b, nb_remplacants: m.nb_remplacants ?? 0 });
+          } else {
+            await call("/api/matchs", "POST", { ...base, sport_id: state.ligue.sport_id, ligue_id: Number(ligueId), prive: false });
+          }
+          state.matchEdit = null;
+        }, id ? "Match modifié" : "Match créé");
+        return false;
+      }
+
+      function annulerMatch(id) {
+        askAction("Annuler ce match ?", () => call(`/api/matchs/${id}`, "DELETE"), "Match annulé");
+        return;
+      }
+
+      // Décale tous les matchs non joués (option : un seul terrain)
+      async function appliquerRetard() {
+        const n = Number(state.ligue.nb_terrains) || 1;
+        const options = { tous: "Tous les terrains" };
+        for (let i = 1; i <= n; i++) options[i] = `Terrain ${i}`;
+        const r = await Swal.fire({
+          title: "Appliquer un retard",
+          html: '<input id="rt-min" type="number" class="swal2-input" placeholder="Minutes (ex : 7)" min="-60" max="240"><select id="rt-t" class="swal2-select">' + Object.entries(options).map(([k, v]) => `<option value="${k}">${v}</option>`).join("") + "</select>",
+          showCancelButton: true,
+          confirmButtonText: "Appliquer",
+          cancelButtonText: "Annuler",
+          preConfirm: () => {
+            const minutes = Number(document.getElementById("rt-min").value);
+            if (!Number.isInteger(minutes) || minutes === 0) return Swal.showValidationMessage("Entrez un nombre de minutes entier non nul");
+            return { minutes, terrain: document.getElementById("rt-t").value };
+          },
+        });
+        if (!r.isConfirmed) return;
+        const body = { minutes: r.value.minutes };
+        if (r.value.terrain !== "tous") body.terrain_id = Number(r.value.terrain);
+        action(() => api("/retard", "POST", body));
+      }
+
+      function vueMatchs() {
+        const filtres = ["tous", "a_venir", "en_cours", "termine", "annule"];
+        const liste = state.matchs
+          .filter((m) => state.filtre === "tous" || stat(m) === state.filtre)
+          .filter((m) => state.terrain === "tous" || String(m.terrain_id) === String(state.terrain))
+          .sort((a, b) => new Date(a.date_heure) - new Date(b.date_heure));
+        const edit = state.matchEdit ? state.matchs.find((m) => m.id === state.matchEdit) : null;
+        return `
+          <section class="${card} mb-4">
+            <h2 class="font-bold text-amber-400 mb-3">⚡ Générer les matchs automatiquement</h2>
+            <form onsubmit="return genererCalendrier(event)" class="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+              <label class="text-xs text-gray-400">Heure du 1er match<input name="heure" type="time" required value="12:10" class="${inp}" /></label>
+              <label class="text-xs text-gray-400">Durée match (min)<input name="duree" type="number" min="1" value="8" class="${inp}" /></label>
+              <label class="text-xs text-gray-400">Pause entre matchs (min)<input name="rotation" type="number" min="0" value="2" class="${inp}" /></label>
+              <label class="text-xs text-gray-400">Terrains<input name="terrains" type="number" min="1" value="${Number(state.ligue.nb_terrains) || 1}" class="${inp}" /></label>
+              <button class="${btnMain} col-span-2 sm:col-span-4">⚡ Générer les matchs de poules</button>
+            </form>
+            ${Number(state.ligue.poules_verrouillees) === 1 ? `<p class="text-sm text-amber-300 mt-3">🔒 Poules verrouillées : <button type="button" class="underline" onclick="askAction('Déverrouiller les poules ?', ()=>api('/deverrouiller-poules','POST'),'Poules déverrouillées')">déverrouiller</button> pour générer les matchs.</p>` : ""}
+            <p class="text-xs text-gray-500 mt-2">Tire les poules si besoin, puis crée tous les matchs (chaque équipe affronte sa poule, jamais 2 matchs en même temps pour une équipe, terrains alternés). Les affiches déjà créées sont conservées.</p>
+          </section>
+          ${formMatch(edit)}
+          <div class="flex flex-wrap gap-2 mt-6 items-center">${filtres.map((k) => `<button onclick="state.filtre='${k}';render()" class="${btn} ${state.filtre === k ? "border-amber-400" : ""}">${k.replace("_", " ")}</button>`).join("")}
+            <select onchange="state.terrain=this.value;render()" class="${inp} !w-auto"><option value="tous">Tous les terrains</option>${optsTerrains(state.terrain).replace(/<option value="(\d+)" selected>/, '<option value="$1" selected>')}</select>
+            <button class="${btnMain}" onclick="appliquerRetard()">⏱️ Appliquer un retard</button></div>
+          <div class="space-y-2 mt-3">${
+            liste.length
+              ? liste.map((m) => `
+              <div class="${card} flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="font-semibold truncate">${esc(m.nom_equipe_a)} <span class="text-amber-400">${stat(m) === "a_venir" ? "vs" : `${m.score_equipe_a ?? 0} - ${m.score_equipe_b ?? 0}`}</span> ${esc(m.nom_equipe_b)}</p>
+                  <p class="text-xs text-gray-400">${hhmm(m.date_heure)} • Terrain ${esc(m.terrain_nom || m.terrain_id || "?")} • ${esc(phaseLabel(m))} ${badge(m)}</p>
+                </div>
+                <div class="flex gap-2">
+                  <a class="${btn}" href="/match.html?id=${m.id}">Ouvrir</a>
+                  ${m.statut === "termine" || m.statut === "annule" ? "" : `<button class="${btn}" onclick="state.matchEdit=${m.id};render();scrollTo(0,0)">Modifier</button><button class="${btn} text-red-300" onclick="annulerMatch(${m.id})">Annuler</button>`}
+                </div>
+              </div>`).join("")
+              : '<p class="text-gray-500">Aucun match.</p>'
+          }</div>`;
+      }
+
+      /* ---------- Poules & phases ---------- */
+      function genererCalendrier(ev) {
+        ev.preventDefault();
+        const f = new FormData(ev.target);
+        const date = String(state.ligue.date_debut || "").slice(0, 10);
+        if (!date) {
+          notify("La ligue n'a pas de date de début (voir Réglages)", false);
+          return false;
+        }
+        action(() => api("/generer-calendrier", "POST", {
+          start_at: `${date}T${f.get("heure")}:00`,
+          duration_minutes: Number(f.get("duree")),
+          rotation_minutes: Number(f.get("rotation")),
+          terrain_count: Number(f.get("terrains")),
+        }));
+        return false;
+      }
+
+      function bracketCol(phase, titre) {
+        const ms = state.matchs.filter((m) => m.phase === phase && m.statut !== "annule").sort((a, b) => a.id - b.id);
+        return `<div><h4 class="text-sm font-bold text-gray-300 mb-2">${titre}</h4><div class="space-y-2">${
+          ms.length
+            ? ms.map((m) => `<a href="/match.html?id=${m.id}" class="block bg-gray-800 border border-gray-700 hover:border-amber-400 rounded-lg p-2 text-sm">
+                <div class="flex justify-between"><span class="truncate ${m.vainqueur_equipe === "A" ? "text-emerald-300" : ""}">${esc(m.nom_equipe_a)}</span><span>${m.score_equipe_a ?? "-"}</span></div>
+                <div class="flex justify-between"><span class="truncate ${m.vainqueur_equipe === "B" ? "text-emerald-300" : ""}">${esc(m.nom_equipe_b)}</span><span>${m.score_equipe_b ?? "-"}</span></div>
+                <div class="mt-1">${badge(m)}</div></a>`).join("")
+            : '<p class="text-gray-600 text-xs">Pas encore généré</p>'
+        }</div></div>`;
+      }
+
+      function vuePoules() {
+        const l = state.ligue;
+        const parPoule = {};
+        state.equipes.forEach((e) => (parPoule[e.poule || "—"] ||= []).push(e));
+        const verrou = Number(l.poules_verrouillees) === 1;
+        const dis = verrou ? "disabled" : "";
+        return `
+          <section class="${card} space-y-3">
+            <h2 class="font-bold text-amber-400">Poules ${verrou ? '<span class="text-xs text-emerald-300">🔒 verrouillées</span>' : ""}</h2>
+            ${Number(l.a_poules) ? "" : '<p class="text-sm text-gray-500">Cette ligue n\'utilise pas de poules (voir Réglages).</p>'}
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${Object.entries(parPoule).map(([p, es]) => `<div class="bg-gray-800 rounded-lg p-3"><p class="font-semibold mb-1">Poule ${esc(p)}</p>            ${es.map((e) => `<div class="flex items-center justify-between gap-2 text-sm text-gray-300"><span class="truncate">${esc(e.nom)}</span><select ${dis} onchange="changerPoule(${e.id}, this.value)" class="${inp} !w-auto !py-0.5 text-xs">${["A", "B", "C", "D"].map((p) => `<option ${p === e.poule ? "selected" : ""}>${p}</option>`).join("")}</select></div>`).join("")}</div>`).join("")}</div>
+            <div class="flex flex-wrap gap-2">
+              <button class="${btn}" ${dis} onclick="askAction('Tirer les poules au sort ?', ()=>api('/generer-poules','POST'))">🎲 Tirer les poules</button>
+              ${verrou
+                ? `<button class="${btn}" onclick="askAction('Déverrouiller les poules ?', ()=>api('/deverrouiller-poules','POST'),'Poules déverrouillées')">🔓 Déverrouiller</button>`
+                : `<button class="${btn}" onclick="askAction('Verrouiller les poules ? Tous les matchs de poule doivent être terminés.', ()=>api('/verrouiller-poules','POST'))">🔒 Verrouiller</button>`}
+              <button class="${btnMain}" onclick="askAction('Clôturer la phase de poules ? Le classement est figé et la phase finale est générée.', ()=>api('/cloturer-poules','POST'))">🏁 Clôturer la phase de poules</button>
+            </div>
+          </section>
+
+          <section class="${card} mt-6">
+            <h2 class="font-bold text-amber-400 mb-3">Calendrier des poules</h2>
+            <form onsubmit="return genererCalendrier(event)" class="grid sm:grid-cols-4 gap-3 items-end">
+              <label class="text-xs text-gray-400">Heure du 1er match<input name="heure" type="time" required value="12:10" class="${inp}" /></label>
+              <label class="text-xs text-gray-400">Durée match (min)<input name="duree" type="number" min="1" value="8" class="${inp}" /></label>
+              <label class="text-xs text-gray-400">Rotation (min)<input name="rotation" type="number" min="0" value="2" class="${inp}" /></label>
+              <label class="text-xs text-gray-400">Terrains<input name="terrains" type="number" min="1" value="${Number(l.nb_terrains) || 1}" class="${inp}" /></label>
+              <button class="${btnMain} sm:col-span-4">📅 Générer le calendrier</button>
+            </form>
+            <p class="text-xs text-gray-500 mt-2">Date utilisée : ${esc(String(l.date_debut || "non définie").slice(0, 10))} (date de début de la ligue).</p>
+          </section>
+
+          <section class="${card} mt-6">
+            <h2 class="font-bold text-amber-400 mb-3">Bracket</h2>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">${bracketCol("quart", "Quarts")}${bracketCol("demi", "Demis")}${bracketCol("finale", "Finale")}${bracketCol("classement", "Match de classement")}</div>
+          </section>`;
+      }
+
+      function changerPoule(id, poule) {
+        action(() => api(`/equipes/${id}`, "PUT", { poule }), "Équipe déplacée");
+      }
+
+      /* ---------- Équipes ---------- */
+      async function creerEquipe() {
+        const r = await Swal.fire({
+          title: "Nouvelle équipe",
+          html: '<input id="ne-nom" class="swal2-input" placeholder="Nom de l\'équipe"><select id="ne-poule" class="swal2-select"><option value="">Sans poule</option><option>A</option><option>B</option></select><textarea id="ne-txt" class="swal2-textarea" placeholder="Effectif (optionnel) : 1 - Chris, 2 - Idriss, 3 - Romann (C)"></textarea>',
+          showCancelButton: true,
+          confirmButtonText: "Créer",
+          cancelButtonText: "Annuler",
+          preConfirm: () => {
+            const nom = document.getElementById("ne-nom").value.trim();
+            if (!nom) return Swal.showValidationMessage("Nom obligatoire");
+            return { nom, poule: document.getElementById("ne-poule").value || null, texte: document.getElementById("ne-txt").value };
+          },
+        });
+        if (r.isConfirmed) action(() => api("/equipes", "POST", r.value), "Équipe créée");
+      }
+      function supprimerEquipe(id) {
+        const nom = state.equipes.find((x) => x.id === id)?.nom || "";
+        askAction(`Supprimer l'équipe « ${nom} » ?`, async () => {
+          const r = await api(`/equipes/${id}`, "DELETE");
+          state.equipeOuverte = null;
+          return r;
+        }, "Équipe supprimée");
+      }
+      function qrCapitaine(id) {
+        const e = state.equipes.find((x) => x.id === id);
+        if (!e?.code_acces) return notify("Pas de code d'accès", false);
+        showQr({ titre: `Capitaine – ${e.nom}`, sousTitre: "Scanner pour se connecter", url: `${location.origin}/claim/${e.code_acces}`, extra: `Code : <b>${esc(e.code_acces)}</b>` });
+      }
+      async function qrRejoindre(id) {
+        const e = state.equipes.find((x) => x.id === id);
+        try {
+          const d = await api(`/equipes/${id}/lien-rejoindre`);
+          showQr({ titre: `Rejoindre – ${e?.nom || ""}`, sousTitre: "Scanner pour s'inscrire dans l'équipe", url: `${location.origin}${d.chemin}` });
+        } catch (err) {
+          notify(err.message, false);
+        }
+      }
+      function validerCapitaine(id, accepter) {
+        askAction(accepter ? "Valider ce joueur comme capitaine ?" : "Refuser cette candidature ?", () => api(`/equipes/${id}/capitaine`, "POST", { accepter }), accepter ? "Capitaine validé" : "Candidature refusée");
+      }
+      function regenererCode(id) {
+        askAction("Régénérer le code ? L'ancien QR/lien cessera de fonctionner.", () => api(`/equipes/${id}/code`, "POST"), "Nouveau code généré");
+      }
+      async function importerEffectif(id) {
+        const texte = document.getElementById("imp-txt").value;
+        if (!texte.trim()) return notify("Saisissez un effectif", false);
+        const remplacer = document.getElementById("imp-rep").checked;
+        await action(() => api(`/equipes/${id}/joueurs/import`, "POST", { texte, remplacer }));
+        ouvrirEquipe(id);
+      }
+      // Modale de modification rapide d'un joueur (nom/numéro/équipe/capitaine ou suppression)
+      async function editJoueur(kind, refId) {
+        const j = state.joueurs.find((x) => x.kind === kind && Number(x.ref_id) === Number(refId));
+        if (!j) return;
+        const nom = j.pseudo || j.nom || "";
+        const numero = j.numero;
+        const equipeId = j.equipe_id;
+        const cap = j.est_capitaine;
+        const opts = state.equipes.map((e) => `<option value="${e.id}" ${Number(e.id) === Number(equipeId) ? "selected" : ""}>${esc(e.nom)}</option>`).join("");
+        const r = await Swal.fire({
+          title: "Modifier le joueur",
+          html: `<input id="ej-nom" class="swal2-input" value="${esc(nom)}" ${kind === "membre" ? "disabled" : ""} placeholder="Nom"><input id="ej-num" type="number" min="0" max="999" class="swal2-input" value="${numero ?? ""}" placeholder="Numéro"><select id="ej-eq" class="swal2-select"><option value="">Sans équipe</option>${opts}</select>${kind === "ghost" ? `<label class="block mt-2"><input id="ej-cap" type="checkbox" ${Number(cap) ? "checked" : ""}> Capitaine</label>` : ""}`,
+          showCancelButton: true,
+          showDenyButton: true,
+          confirmButtonText: "Enregistrer",
+          denyButtonText: "Supprimer de la ligue",
+          cancelButtonText: "Fermer",
+          preConfirm: () => ({
+            nom: document.getElementById("ej-nom").value.trim(),
+            numero: document.getElementById("ej-num").value === "" ? null : Number(document.getElementById("ej-num").value),
+            equipe_id: document.getElementById("ej-eq").value ? Number(document.getElementById("ej-eq").value) : null,
+            ...(kind === "ghost" ? { est_capitaine: document.getElementById("ej-cap").checked } : {}),
+          }),
+        });
+        if (r.isConfirmed) action(() => api(`/joueurs/${kind}/${refId}`, "PUT", r.value), "Joueur modifié");
+        else if (r.isDenied) askAction("Retirer ce joueur de la ligue ?", () => api(`/joueurs/${kind}/${refId}`, "DELETE"), "Joueur retiré");
+      }
+      async function ouvrirEquipe(id) {
+        try {
+          state.equipeOuverte = await api(`/equipes/${id}`);
+          render();
+        } catch (e) {
+          notify(e.message, false);
+        }
+      }
+      async function uploadLogo(id, input) {
+        const file = input.files?.[0];
+        if (!file) return;
+        const fd = new FormData();
+        fd.append("logo", file);
+        await action(() => api(`/equipes/${id}/logo`, "POST", fd), "Logo mis à jour");
+        ouvrirEquipe(id);
+      }
+      function vueEquipes() {
+        const d = state.equipeOuverte;
+        const liste = state.equipes.map((e) => `
+          <div class="${card}">
+            <div class="flex items-center gap-2 min-w-0"><div class="shrink-0">${e.logo_url ? `<img src="${esc(e.logo_url)}" class="w-10 h-10 rounded-lg object-cover" />` : '<div class="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center">🛡️</div>'}</div>
+              <button onclick="ouvrirEquipe(${e.id})" class="text-left hover:text-amber-300 min-w-0"><p class="font-semibold truncate">${esc(e.nom)}</p><p class="text-xs text-gray-400">Poule ${esc(e.poule || "—")} • ${e.nb_joueurs ?? 0} joueur(s)${e.capitaine_pseudo ? ` • 👑 ${esc(e.capitaine_pseudo)}` : ""}</p></button></div>
+            ${e.candidat_capitaine ? `<div class="mt-3 bg-amber-500/10 border border-amber-500/40 rounded-lg p-2 text-sm"><p>🙋 <b>${esc(e.candidat_capitaine)}</b> demande le brassard de capitaine</p><div class="flex gap-2 mt-2"><button class="${btn} text-green-300" onclick="validerCapitaine(${e.id}, true)">Accepter</button><button class="${btn} text-red-300" onclick="validerCapitaine(${e.id}, false)">Refuser</button></div></div>` : ""}
+            <div class="flex flex-wrap gap-2 mt-3"><button class="${btn}" onclick="qrCapitaine(${e.id})">📱 QR Code Capitaine</button><button class="${btn}" onclick="qrRejoindre(${e.id})">📲 QR Rejoindre</button><button class="${btn} text-red-300" onclick="supprimerEquipe(${e.id})">Supprimer</button></div>
+          </div>`).join("");
+        let detail = "";
+        if (d) {
+          const eid = d.equipe.id;
+          const effectif = state.joueurs.filter((j) => Number(j.equipe_id) === Number(eid)).sort((a, b) => Number(b.est_capitaine) - Number(a.est_capitaine) || (a.numero ?? 999) - (b.numero ?? 999));
+          const ligneJ = (j) => `<div class="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2 text-sm"><button class="text-left hover:text-amber-300" onclick="editJoueur('${j.kind}', ${j.ref_id})"><span class="text-amber-400 font-bold">${j.numero != null ? "#" + esc(j.numero) : "#–"}</span> ${esc(j.pseudo || j.nom)} ${j.kind === "ghost" ? '<span class="text-xs text-gray-500">(sans compte)</span>' : ""} ${Number(j.est_capitaine) ? "👑" : ""}</button>${j.kind === "membre" && !Number(j.est_capitaine) ? `<button class="${btn}" onclick="capitaine(${eid},${j.ref_id})">Capitaine</button>` : ""}</div>`;
+          detail = `<div class="${card} mt-6 space-y-3">
+            <div class="flex items-center justify-between"><h3 class="font-bold text-amber-400">${esc(d.equipe.nom)}</h3><span class="flex gap-2"><button class="${btn}" onclick="regenererCode(${eid})">Régénérer le code</button><button class="${btn}" onclick="state.equipeOuverte=null;render()">Fermer</button></span></div>
+            <p class="text-sm text-gray-400">Code capitaine : <b class="text-amber-400">${esc(state.equipes.find((x) => x.id === eid)?.code_acces || "—")}</b></p>
+            <label class="text-xs text-gray-400 block">Logo<input type="file" accept="image/*" onchange="uploadLogo(${eid}, this)" class="${inp}" /></label>
+            <div class="space-y-2">${effectif.length ? effectif.map(ligneJ).join("") : '<p class="text-gray-500 text-sm">Aucun joueur.</p>'}</div>
+            <div><label class="text-xs text-gray-400">Import en masse (ex : 1 - Chris, 2 - Idriss, 3 - Romann (C))</label>
+              <textarea id="imp-txt" rows="3" class="${inp}" placeholder="1 - Chris, 2 - Idriss, 3 - Romann (C)"></textarea>
+              <label class="text-xs text-gray-400"><input id="imp-rep" type="checkbox" /> Remplacer les joueurs sans compte existants</label>
+              <button class="${btnMain} mt-2" onclick="importerEffectif(${eid})">Importer l'effectif</button></div>
+            ${d.demandes.length ? `<h4 class="font-semibold mt-2">Demandes en attente</h4>${d.demandes.map((r) => `<div class="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2 text-sm"><span>${esc(r.pseudo)}</span><span class="flex gap-2"><button class="${btn}" onclick="decider(${d.equipe.id},${r.id},'accepter')">Accepter</button><button class="${btn} text-red-300" onclick="decider(${d.equipe.id},${r.id},'refuser')">Refuser</button></span></div>`).join("")}` : ""}
+          </div>`;
+        }
+        return `<div class="mb-4"><button class="${btnMain}" onclick="creerEquipe()">+ Créer une équipe</button></div><div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${liste || '<p class="text-gray-500">Aucune équipe.</p>'}</div>${detail}`;
+      }
+      async function decider(equipeId, demandeId, decision) {
+        await action(() => api(`/equipes/${equipeId}/demandes/${demandeId}/decision`, "POST", { decision }));
+        ouvrirEquipe(equipeId);
+      }
+      async function capitaine(equipeId, userId) {
+        await action(() => api(`/equipes/${equipeId}/capitaine`, "PUT", { utilisateur_id: userId }), "Capitaine désigné");
+        ouvrirEquipe(equipeId);
+      }
+
+      /* ---------- Joueurs & staff ---------- */
+      const ROLES = ["joueur", "admin", "arbitre", "table_marque", "speaker", "dj"];
+      function vueJoueurs() {
+        const l = state.ligue;
+        const moi = JSON.parse(localStorage.getItem("user") || "{}").id;
+        const creator = Number(l.createur_id) === Number(moi);
+        const ligne = (m, estOrga) => `
+          <tr class="border-t border-gray-800">
+            <td class="py-2 pr-2">${esc(m.pseudo)}<div class="text-xs text-gray-500">${esc(m.prenom || "")} ${esc(m.nom || "")}</div></td>
+            <td class="pr-2">${estOrga ? "—" : `<select onchange="affecter(${m.id}, this.value)" class="${inp}"><option value="">—</option>${state.equipes.map((e) => `<option value="${e.id}" ${Number(m.equipe_id) === Number(e.id) ? "selected" : ""}>${esc(e.nom)}</option>`).join("")}</select>`}</td>
+            <td class="pr-2">${creator && Number(m.id) !== Number(l.createur_id) ? `<select onchange="changerRole(${m.id}, this.value)" class="${inp}">${ROLES.map((r) => `<option ${r === m.role_ligue ? "selected" : ""}>${r}</option>`).join("")}</select>` : esc(m.role_ligue || "joueur")}</td>
+            <td class="text-center">${m.buts ?? 0}</td><td class="text-center">${m.passes_decisives ?? 0}</td>
+          </tr>`;
+        const table = (titre, rows, orga) => `<div class="${card} overflow-x-auto"><h3 class="font-bold text-amber-400 mb-2">${titre} (${rows.length})</h3>
+          <table class="w-full text-sm min-w-[560px]"><thead class="text-xs text-gray-500 text-left"><tr><th>Utilisateur</th><th>Équipe</th><th>Rôle</th><th>Buts</th><th>Passes</th></tr></thead>
+          <tbody>${rows.map((m) => ligne(m, orga)).join("") || '<tr><td class="text-gray-500 py-2">Aucun</td></tr>'}</tbody></table></div>`;
+        return `${table("Joueurs", l.joueurs || [], false)}<div class="mt-6">${table("Organisation / staff", l.membres || [], true)}</div>
+          <p class="text-xs text-gray-500 mt-3">Seul le créateur peut changer les rôles. Codes d'invitation : onglet Aperçu.</p>`;
+      }
+      function affecter(userId, equipeId) {
+        if (!equipeId) return;
+        action(() => api(`/membres/${userId}/equipe`, "PUT", { equipe_id: Number(equipeId) }));
+      }
+      function changerRole(userId, role) {
+        action(() => api(`/membres/${userId}/role`, "PUT", { role }));
+      }
+
+      /* ---------- Réglages ---------- */
+      async function copierCodeStaff() {
+        const code = state.ligue.code_staff;
+        try {
+          await navigator.clipboard.writeText(code);
+          notify("Code staff copié", true);
+        } catch {
+          notify(`Code staff : ${code}`, true);
+        }
+      }
+
+      function vueReglages() {
+        const code = state.ligue.code_staff;
+        const codeCard = code
+          ? `<div class="${card} space-y-2"><h2 class="font-bold text-amber-400">Paramètres organisateur</h2>
+              <p class="text-sm text-gray-400">Code staff à transmettre uniquement aux organisateurs.</p>
+              <div class="flex items-center gap-3"><span class="font-mono text-lg tracking-[0.3em] text-amber-200">${esc(code)}</span>
+              <button class="${btn}" onclick="copierCodeStaff()">Copier</button></div></div>`
+          : "";
+        return codeCard + `<div class="${card} space-y-3 mt-4"><h2 class="font-bold text-amber-400">Réglages de la ligue</h2>
+          <p class="text-sm text-gray-400">Nom, dates, terrains, points, poules, suppression…</p>
+          <a class="${btnMain} inline-block" href="/ligues/${ligueId}/gestion">Ouvrir la page de réglages</a></div>`;
+      }
+
+      charger().catch((e) => notify(e.message, false));
+    </script>
+  </body>
+</html>
